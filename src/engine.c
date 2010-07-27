@@ -262,8 +262,8 @@ ibus_m17n_engine_update_preedit (IBusM17NEngine *m17n)
     buf = ibus_m17n_mtext_to_utf8 (m17n->context->preedit);
     if (buf) {
         text = ibus_text_new_from_static_string (buf);
-        ibus_text_append_attribute (text, IBUS_ATTR_TYPE_FOREGROUND, 0x00000000, 0, -1);
-        ibus_text_append_attribute (text, IBUS_ATTR_TYPE_BACKGROUND, 0x00c8c8f0, 0, -1);
+        ibus_text_append_attribute (text, IBUS_ATTR_TYPE_FOREGROUND, 0x00ffffff, 0, -1);
+        ibus_text_append_attribute (text, IBUS_ATTR_TYPE_BACKGROUND, 0x00000000, 0, -1);
         ibus_engine_update_preedit_text ((IBusEngine *) m17n,
                                          text,
                                          m17n->context->cursor_pos,
