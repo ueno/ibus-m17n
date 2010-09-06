@@ -83,6 +83,7 @@ ibus_setup_m17n_CFLAGS = \
 	@M17N_CFLAGS@ \
 	@GTK2_CFLAGS@ \
 	-DSETUPDIR=\"$(setupdir)\" \
+	-DGETTEXT_PACKAGE=\"@GETTEXT_PACKAGE@\" \
 	$(NULL)
 ibus_setup_m17n_LDADD = \
 	@IBUS_LIBS@ \

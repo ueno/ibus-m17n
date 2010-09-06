@@ -6,6 +6,9 @@
 #include <string.h>
 #include <errno.h>
 #include "m17nutil.h"
+#include <libintl.h>
+
+#define _(text) (dgettext (GETTEXT_PACKAGE, text))
 
 enum {
     COLUMN_KEY,
@@ -516,7 +519,7 @@ start (const gchar *engine_name)
 
     gtk_tree_view_set_model (GTK_TREE_VIEW(treeview), GTK_TREE_MODEL (store));
     gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview), -1,
-                                                 "Key",
+                                                 _("Key"),
                                                  gtk_cell_renderer_text_new (),
                                                  "text", COLUMN_KEY, NULL);
     g_object_set (treeview, "has-tooltip", TRUE, NULL);
@@ -528,7 +531,7 @@ start (const gchar *engine_name)
     context.store = store;
     renderer = gtk_cell_renderer_text_new ();
     gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview), -1,
-                                                 "Value",
+                                                 _("Value"),
                                                  renderer,
                                                  "text", COLUMN_VALUE, NULL);
     g_object_set (renderer, "editable", TRUE, NULL);

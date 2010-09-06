@@ -1,98 +1,97 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR Huang Peng <shawn.p.huang@gmail.com>
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2010-09-06 15:56+0900\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: 2010-09-06 15:56+0900\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=utf-8\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: ../src/m17nutil.c:251
 msgid "M17N"
-msgstr ""
+msgstr "M17N"
 
 #: ../src/setup.c:522
 msgid "Key"
-msgstr ""
+msgstr "キー"
 
 #: ../src/setup.c:534
 msgid "Value"
-msgstr ""
+msgstr "値"
 
 #: ../src/ibus-m17n-preferences.ui.h:1
 msgid "<b>Other</b>"
-msgstr ""
+msgstr "<b>その他</b>"
 
 #: ../src/ibus-m17n-preferences.ui.h:2
 msgid "<b>Pre-edit Appearance</b>"
-msgstr ""
+msgstr "<b>プリエディットの見た目</b>"
 
 #: ../src/ibus-m17n-preferences.ui.h:3
 msgid "<b>m17n-lib Configuration</b>"
-msgstr ""
+msgstr "<b>m17n-libの設定</b>"
 
 #: ../src/ibus-m17n-preferences.ui.h:4
 msgid "Advanced"
-msgstr ""
+msgstr "高度"
 
 #: ../src/ibus-m17n-preferences.ui.h:5
 msgid "Background:"
-msgstr ""
+msgstr "背景色:"
 
 #: ../src/ibus-m17n-preferences.ui.h:6
 msgid "Double"
-msgstr ""
+msgstr "二重"
 
 #: ../src/ibus-m17n-preferences.ui.h:7
 msgid "Foreground: "
-msgstr ""
+msgstr "前景色:"
 
 #: ../src/ibus-m17n-preferences.ui.h:8
 msgid "General"
-msgstr ""
+msgstr "一般"
 
 #: ../src/ibus-m17n-preferences.ui.h:9
 msgid "Horizontal"
-msgstr ""
+msgstr "水平"
 
 #: ../src/ibus-m17n-preferences.ui.h:10
 msgid "Lookup Table Orientation: "
-msgstr ""
+msgstr "候補ウィンドウの向き"
 
 #: ../src/ibus-m17n-preferences.ui.h:11
 msgid "Low"
-msgstr ""
+msgstr "下部"
 
 #: ../src/ibus-m17n-preferences.ui.h:12
 msgid "None"
-msgstr ""
+msgstr "なし"
 
 #: ../src/ibus-m17n-preferences.ui.h:13
 msgid "Preferences"
-msgstr ""
+msgstr "設定"
 
 #: ../src/ibus-m17n-preferences.ui.h:14
 msgid "Single"
-msgstr ""
+msgstr "一重"
 
 #: ../src/ibus-m17n-preferences.ui.h:15
 msgid "System"
-msgstr ""
+msgstr "システム"
 
 #: ../src/ibus-m17n-preferences.ui.h:16
 msgid "Underline:"
-msgstr ""
+msgstr "下線"
 
 #: ../src/ibus-m17n-preferences.ui.h:17
 msgid "Vertical"
-msgstr ""
+msgstr "垂直"
