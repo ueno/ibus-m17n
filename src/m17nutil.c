@@ -96,6 +96,13 @@ ibus_m17n_parse_color (const gchar *hex)
     return color;
 }
 
+#define DEFAULT_REQUIRES (IBUS_CAP_PREEDIT_TEXT |   \
+                          IBUS_CAP_AUXILIARY_TEXT | \
+                          IBUS_CAP_LOOKUP_TABLE |   \
+                          IBUS_CAP_FOCUS |          \
+                          IBUS_CAP_PROPERTY | \
+                          IBUS_CAP_SURROUNDING_TEXT)
+
 static IBusEngineDesc *
 ibus_m17n_engine_new (MSymbol  lang,
                       MSymbol  name,
@@ -127,6 +134,7 @@ ibus_m17n_engine_new (MSymbol  lang,
                                            "icon",        engine_icon ? engine_icon : "",
                                            "layout",      "us",
                                            "rank",        config->rank,
+                                           "requires",    DEFAULT_REQUIRES,
                                            NULL);
 
     g_free (engine_name);

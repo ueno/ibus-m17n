@@ -966,8 +966,53 @@ ibus_m17n_engine_callback (MInputContext *context,
     }
     else if (command == Minput_reset) {
     }
-    else if (command == Minput_get_surrounding_text) {
+    else if (command == Minput_get_surrounding_text &&
+             (((IBusEngine *) m17n)->client_capabilities &
+              IBUS_CAP_SURROUNDING_TEXT) != 0) {
+        IBusText *text;
+        guint cursor_pos, nchars, nbytes;
+        MText *mt, *surround;
+        int len, pos;
+
+        ibus_engine_get_surrounding_text ((IBusEngine *) m17n,
+                                          &text,
+                                          &cursor_pos);
+        nchars = ibus_text_get_length (text);
+        nbytes = g_utf8_offset_to_pointer (text->text, nchars) - text->text;
+        mt = mconv_decode_buffer (Mcoding_utf_8, text->text, nbytes);
+        g_object_unref (text);
+
+        len = (long) mplist_value (m17n->context->plist);
+        if (len < 0) {
+            pos = cursor_pos + len;
+            if (pos < 0)
+                pos = 0;
+            surround = mtext_duplicate (mt, pos, cursor_pos);
+        }
+        else if (len > 0) {
+            pos = cursor_pos + len;
+            if (pos > nchars)
+                pos = nchars;
+            surround = mtext_duplicate (mt, cursor_pos, pos);
+        }
+        else {
+            surround = mtext ();
+        }
+        m17n_object_unref (mt);
+        mplist_set (m17n->context->plist, Mtext, surround);
+        m17n_object_unref (surround);
     }
-    else if (command == Minput_delete_surrounding_text) {
+    else if (command == Minput_delete_surrounding_text &&
+             (((IBusEngine *) m17n)->client_capabilities &
+              IBUS_CAP_SURROUNDING_TEXT) != 0) {
+        int len;
+
+        len = (long) mplist_value (m17n->context->plist);
+        if (len < 0)
+            ibus_engine_delete_surrounding_text ((IBusEngine *) m17n,
+                                                 len, -len);
+        else if (len > 0)
+            ibus_engine_delete_surrounding_text ((IBusEngine *) m17n,
+                                                 0, len);
     }
 }
