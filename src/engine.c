@@ -149,6 +149,7 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
     engine_class->cursor_down = ibus_m17n_engine_cursor_down;
 
     engine_class->property_activate = ibus_m17n_engine_property_activate;
+
 }
 
 static void
@@ -279,7 +280,10 @@ ibus_m17n_engine_constructor (GType                   type,
             mplist_put (im->driver.callback_list, Minput_candidates_done, ibus_m17n_engine_callback);
             mplist_put (im->driver.callback_list, Minput_set_spot, ibus_m17n_engine_callback);
             mplist_put (im->driver.callback_list, Minput_toggle, ibus_m17n_engine_callback);
-            mplist_put (im->driver.callback_list, Minput_reset, ibus_m17n_engine_callback);
+            /*
+              Does not set reset callback, uses the default callback in m17n.
+              mplist_put (im->driver.callback_list, Minput_reset, ibus_m17n_engine_callback);
+            */
             mplist_put (im->driver.callback_list, Minput_get_surrounding_text, ibus_m17n_engine_callback);
             mplist_put (im->driver.callback_list, Minput_delete_surrounding_text, ibus_m17n_engine_callback);
 
@@ -294,8 +298,7 @@ ibus_m17n_engine_constructor (GType                   type,
         return NULL;
     }
 
-    m17n->context = minput_create_ic (im, NULL);
-    mplist_add (m17n->context->plist, msymbol ("IBusEngine"), m17n);
+    m17n->context = minput_create_ic (im, m17n);
 
     m17n->config_section = g_strdup_printf ("engine/M17N/%s/%s",
                                             lang, name);
@@ -572,7 +575,7 @@ ibus_m17n_engine_focus_in (IBusEngine *engine)
     IBusM17NEngine *m17n = (IBusM17NEngine *) engine;
 
     ibus_engine_register_properties (engine, m17n->prop_list);
-    ibus_m17n_engine_process_key (m17n, msymbol ("input-focus-in"));
+    ibus_m17n_engine_process_key (m17n, Minput_focus_in);
 
     parent_class->focus_in (engine);
 }
@@ -582,7 +585,7 @@ ibus_m17n_engine_focus_out (IBusEngine *engine)
 {
     IBusM17NEngine *m17n = (IBusM17NEngine *) engine;
 
-    ibus_m17n_engine_process_key (m17n, msymbol ("input-focus-out"));
+    ibus_m17n_engine_process_key (m17n, Minput_focus_out);
 
     parent_class->focus_out (engine);
 }
@@ -593,7 +596,8 @@ ibus_m17n_engine_reset (IBusEngine *engine)
     IBusM17NEngine *m17n = (IBusM17NEngine *) engine;
 
     parent_class->reset (engine);
-    ibus_m17n_engine_focus_in (engine);
+
+    minput_reset_ic (m17n->context);
 }
 
 static void
@@ -676,7 +680,7 @@ ibus_m17n_engine_property_activate (IBusEngine  *engine,
 static void
 ibus_m17n_engine_update_lookup_table (IBusM17NEngine *m17n)
 {
-   ibus_lookup_table_clear (m17n->table);
+    ibus_lookup_table_clear (m17n->table);
 
     if (m17n->context->candidate_list && m17n->context->candidate_show) {
         IBusText *text;
@@ -752,15 +756,14 @@ ibus_m17n_engine_callback (MInputContext *context,
                            MSymbol        command)
 {
     IBusM17NEngine *m17n = NULL;
-    MPlist *p = NULL;
 
-    p = mplist_find_by_key (context->plist,  msymbol ("IBusEngine"));
-    if (p) {
-        m17n = (IBusM17NEngine *) mplist_value (p);
-    }
+    m17n = context->arg;
+    g_return_if_fail (m17n != NULL);
 
-    if (m17n == NULL) {
-        return;
+    /* the callback may be called in minput_create_ic, in the time
+     * m17n->context has not be assigned, so need assign it. */
+    if (m17n->context == NULL) {
+        m17n->context = context;
     }
 
     if (command == Minput_preedit_start) {
