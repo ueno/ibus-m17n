@@ -35,6 +35,7 @@ struct _IBusM17NEngine {
     IBusProperty    *status_prop;
     IBusProperty    *setup_prop;
     IBusPropList    *prop_list;
+    IBusProperty    *show_iok_prop;
 };
 
 struct _IBusM17NEngineClass {
@@ -411,6 +412,8 @@ ibus_m17n_engine_init (IBusM17NEngine *m17n)
 {
     IBusText* label;
     IBusText* tooltip;
+    const gchar *engine_name;
+    gchar *lang = NULL, *name = NULL;
 
     m17n->status_prop = ibus_property_new ("status",
                                            PROP_TYPE_NORMAL,
@@ -436,10 +439,32 @@ ibus_m17n_engine_init (IBusM17NEngine *m17n)
                                           NULL);
     g_object_ref_sink (m17n->setup_prop);
 
+    /* show iok icon for inscript - should be go in default.xml? */
+    engine_name = ibus_engine_get_name ((IBusEngine *) m17n);
+    if (ibus_m17n_scan_engine_name (engine_name, &lang, &name) &&
+        (g_strcmp0 (name, "inscript") == 0 ||
+         g_strcmp0 (name , "inscript2") == 0))
+        ibus_property_set_visible (m17n->show_iok_prop, TRUE);
+    g_free (lang);
+    g_free (name);
+
+    label = ibus_text_new_from_string ("iok");
+    m17n->show_iok_prop = ibus_property_new ("iok",
+                                             PROP_TYPE_NORMAL,
+                                             label,
+                                             "/usr/share/pixmaps/iok.xpm",
+                                             label,
+                                             TRUE,
+                                             FALSE,
+                                             0,
+                                             NULL);
+    g_object_ref_sink (m17n->show_iok_prop);
+
     m17n->prop_list = ibus_prop_list_new ();
     g_object_ref_sink (m17n->prop_list);
     ibus_prop_list_append (m17n->prop_list,  m17n->status_prop);
     ibus_prop_list_append (m17n->prop_list, m17n->setup_prop);
+    ibus_prop_list_append (m17n->prop_list,  m17n->show_iok_prop);
 
     m17n->table = ibus_lookup_table_new (9, 0, TRUE, TRUE);
     g_object_ref_sink (m17n->table);
@@ -522,6 +547,11 @@ ibus_m17n_engine_destroy (IBusM17NEngine *m17n)
     if (m17n->setup_prop) {
         g_object_unref (m17n->setup_prop);
         m17n->setup_prop = NULL;
+    }
+
+    if (m17n->show_iok_prop) {
+        g_object_unref (m17n->show_iok_prop);
+        m17n->show_iok_prop = NULL;
     }
 
     if (m17n->table) {
@@ -827,6 +857,22 @@ ibus_m17n_engine_property_activate (IBusEngine  *engine,
                                  LIBEXECDIR, engine_name);
         g_spawn_command_line_async (setup, NULL);
         g_free (setup);
+    } else if (g_strcmp0 (prop_name, "iok") == 0) {
+        const gchar *engine_name;
+        gchar *lang = NULL, *name = NULL;
+
+        engine_name = ibus_engine_get_name ((IBusEngine *) m17n);
+        if (ibus_m17n_scan_engine_name (engine_name, &lang, &name)) {
+            gchar *iok;
+
+            iok = g_strdup_printf ("/usr/bin/iok -n %s", lang);
+            g_debug ("keymap name = %s,prop_name=%s, prop_state=%d",
+                     engine_name, prop_name, prop_state);
+            g_spawn_command_line_async(iok, NULL);
+            g_free (iok);
+        }
+        g_free (lang);
+        g_free (name);
     }
     parent_class->property_activate (engine, prop_name, prop_state);
 }
