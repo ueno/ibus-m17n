@@ -109,6 +109,7 @@ ibus_m17n_engine_new (MSymbol  lang,
     gchar *engine_title;
     gchar *engine_icon;
     gchar *engine_desc;
+    IBusM17NEngineConfig *config;
 
     engine_name = g_strdup_printf ("m17n:%s:%s", msymbol_name (lang), msymbol_name (name));
 
@@ -116,17 +117,17 @@ ibus_m17n_engine_new (MSymbol  lang,
     engine_title = ibus_m17n_mtext_to_utf8 (title);
     engine_icon = ibus_m17n_mtext_to_utf8 (icon);
     engine_desc = ibus_m17n_mtext_to_utf8 (desc);
+    config = ibus_m17n_get_engine_config (engine_name);
 
-    engine = ibus_engine_desc_new (engine_name,
-                                   engine_longname,
-                                   engine_desc ? engine_desc : "",
-                                   msymbol_name (lang),
-                                   "GPL",
-                                   "",
-                                   engine_icon ? engine_icon : "",
-                                   "us");
-    /* set default rank to 0 */
-    engine->rank = 0;
+    engine = ibus_engine_desc_new_varargs ("name",        engine_name,
+                                           "longname",    engine_longname,
+                                           "description", engine_desc ? engine_desc : "",
+                                           "language",    msymbol_name (lang),
+                                           "license",     "GPL",
+                                           "icon",        engine_icon ? engine_icon : "",
+                                           "layout",      "us",
+                                           "rank",        config->rank,
+                                           NULL);
 
     g_free (engine_name);
     g_free (engine_longname);
@@ -315,10 +316,6 @@ ibus_m17n_get_component (void)
 
     for (p = engines; p != NULL; p = p->next) {
         IBusEngineDesc *engine = p->data;
-        IBusM17NEngineConfig *config;
-
-        config = ibus_m17n_get_engine_config (engine->name);
-        engine->rank = config->rank;
         ibus_component_add_engine (component, engine);
     }
 
