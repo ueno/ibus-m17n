@@ -62,6 +62,7 @@ ibus_engine_m17n_CFLAGS = \
 	@M17N_CFLAGS@ \
 	-DPKGDATADIR=\"$(pkgdatadir)\" \
 	-DLIBEXECDIR=\"$(libexecdir)\" \
+	-DSETUPDIR=\"$(setupdir)\" \
 	$(NULL)
 ibus_engine_m17n_LDADD = \
 	@IBUS_LIBS@ \
@@ -70,6 +71,7 @@ ibus_engine_m17n_LDADD = \
 
 setup_DATA = \
 	ibus-m17n-preferences.ui \
+	default.xml \
 	$(NULL)
 setupdir = $(pkgdatadir)/setup
 
