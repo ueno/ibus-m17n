@@ -9,23 +9,6 @@
 #include "m17nutil.h"
 #include "engine.h"
 
-/* type module to assign different GType to each engine */
-#define IBUS_TYPE_M17N_TYPE_MODULE (ibus_m17n_type_module_get_type ())
-#define IBUS_M17N_TYPE_MODULE (module) (G_TYPE_CHECK_INSTANCE_CAST (module, IBUS_TYPE_M17N_TYPE_MODULE, IBusM17NTypeModule)
-
-typedef struct _IBusM17NTypeModule IBusM17NTypeModule;
-typedef struct _IBusM17NTypeModuleClass IBusM17NTypeModuleClass;
-
-struct _IBusM17NTypeModule
-{
-    GTypeModule parent_instance;
-};
-
-struct _IBusM17NTypeModuleClass
-{
-    GTypeModuleClass parent_class;
-};
-
 typedef struct _IBusM17NEngine IBusM17NEngine;
 typedef struct _IBusM17NEngineClass IBusM17NEngineClass;
 
@@ -56,10 +39,7 @@ struct _IBusM17NEngineClass {
 };
 
 /* functions prototype */
-static GType
-            ibus_m17n_type_module_get_type  (void);
 static void ibus_m17n_engine_class_init     (IBusM17NEngineClass    *klass);
-static void ibus_m17n_engine_class_finalize (IBusM17NEngineClass    *klass);
 static void ibus_m17n_config_value_changed  (IBusConfig             *config,
                                              const gchar            *section,
                                              const gchar            *name,
@@ -122,7 +102,6 @@ static void ibus_m17n_engine_update_lookup_table
 static IBusEngineClass *parent_class = NULL;
 
 static IBusConfig      *config = NULL;
-static IBusM17NTypeModule *module = NULL;
 
 void
 ibus_m17n_init (IBusBus *bus)
@@ -131,55 +110,6 @@ ibus_m17n_init (IBusBus *bus)
     if (config)
         g_object_ref_sink (config);
     ibus_m17n_init_common ();
-
-    module = g_object_new (IBUS_TYPE_M17N_TYPE_MODULE, NULL);
-}
-
-static gboolean
-ibus_m17n_type_module_load (GTypeModule *module)
-{
-    return TRUE;
-}
-
-static void
-ibus_m17n_type_module_unload (GTypeModule *module)
-{
-}
-
-static void
-ibus_m17n_type_module_class_init (IBusM17NTypeModuleClass *klass)
-{
-    GTypeModuleClass *module_class = G_TYPE_MODULE_CLASS (klass);
-
-    module_class->load = ibus_m17n_type_module_load;
-    module_class->unload = ibus_m17n_type_module_unload;
-}
-
-static GType
-ibus_m17n_type_module_get_type (void)
-{
-    static GType type = 0;
-
-    static const GTypeInfo type_info = {
-        sizeof (IBusM17NTypeModuleClass),
-        (GBaseInitFunc) NULL,
-        (GBaseFinalizeFunc) NULL,
-        (GClassInitFunc) ibus_m17n_type_module_class_init,
-        (GClassFinalizeFunc) NULL,
-        NULL,
-        sizeof (IBusM17NTypeModule),
-        0,
-        (GInstanceInitFunc) NULL,
-    };
-
-    if (type == 0) {
-        type = g_type_register_static (G_TYPE_TYPE_MODULE,
-                                       "IBusM17NTypeModule",
-                                       &type_info,
-                                       (GTypeFlags) 0);
-    }
-
-    return type;
 }
 
 static gboolean
@@ -242,14 +172,14 @@ ibus_m17n_engine_get_type_for_name (const gchar *engine_name)
 
     GTypeInfo type_info = {
         sizeof (IBusM17NEngineClass),
-        (GBaseInitFunc)        NULL,
-        (GBaseFinalizeFunc) NULL,
-        (GClassInitFunc)    ibus_m17n_engine_class_init,
-        (GClassFinalizeFunc)ibus_m17n_engine_class_finalize,
+        (GBaseInitFunc)      NULL,
+        (GBaseFinalizeFunc)  NULL,
+        (GClassInitFunc)     ibus_m17n_engine_class_init,
+        (GClassFinalizeFunc) NULL,
         NULL,
         sizeof (IBusM17NEngine),
         0,
-        (GInstanceInitFunc)    ibus_m17n_engine_init,
+        (GInstanceInitFunc)  ibus_m17n_engine_init,
     };
 
     if (!ibus_m17n_scan_engine_name (engine_name, &lang, &name)) {
@@ -267,11 +197,10 @@ ibus_m17n_engine_get_type_for_name (const gchar *engine_name)
     g_assert (type == 0 || g_type_is_a (type, IBUS_TYPE_ENGINE));
 
     if (type == 0) {
-        type = g_type_module_register_type (G_TYPE_MODULE (module),
-                                            IBUS_TYPE_ENGINE,
-                                            type_name,
-                                            &type_info,
-                                            (GTypeFlags) 0);
+        type = g_type_register_static (IBUS_TYPE_ENGINE,
+                                       type_name,
+                                       &type_info,
+                                       (GTypeFlags) 0);
     }
     g_free (type_name);
 
@@ -408,14 +337,6 @@ ibus_m17n_config_value_changed (IBusConfig          *config,
             klass->lookup_table_orientation = _g_variant_get_int32 (value);
         }
     }
-}
-
-static void
-ibus_m17n_engine_class_finalize (IBusM17NEngineClass *klass)
-{
-    if (klass->im)
-        minput_close_im (klass->im);
-    g_free (klass->config_section);
 }
 
 static void
