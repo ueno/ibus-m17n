@@ -1,27 +1,13 @@
 /* vim:set et sts=4: */
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <ibus.h>
 #include <m17n.h>
 #include <string.h>
 #include "m17nutil.h"
 #include "engine.h"
-
-/* type module to assign different GType to each engine */
-#define IBUS_TYPE_M17N_TYPE_MODULE (ibus_m17n_type_module_get_type ())
-#define IBUS_M17N_TYPE_MODULE (module) (G_TYPE_CHECK_INSTANCE_CAST (module, IBUS_TYPE_M17N_TYPE_MODULE, IBusM17NTypeModule)
-
-typedef struct _IBusM17NTypeModule IBusM17NTypeModule;
-typedef struct _IBusM17NTypeModuleClass IBusM17NTypeModuleClass;
-
-struct _IBusM17NTypeModule
-{
-    GTypeModule parent_instance;
-};
-
-struct _IBusM17NTypeModuleClass
-{
-    GTypeModuleClass parent_class;
-};
 
 typedef struct _IBusM17NEngine IBusM17NEngine;
 typedef struct _IBusM17NEngineClass IBusM17NEngineClass;
@@ -33,7 +19,9 @@ struct _IBusM17NEngine {
     MInputContext *context;
     IBusLookupTable *table;
     IBusProperty    *status_prop;
+#ifdef HAVE_SETUP
     IBusProperty    *setup_prop;
+#endif  /* HAVE_SETUP */
     IBusPropList    *prop_list;
 };
 
@@ -51,15 +39,17 @@ struct _IBusM17NEngineClass {
 };
 
 /* functions prototype */
-static GType
-            ibus_m17n_type_module_get_type  (void);
 static void ibus_m17n_engine_class_init     (IBusM17NEngineClass    *klass);
-static void ibus_m17n_engine_class_finalize (IBusM17NEngineClass    *klass);
 static void ibus_m17n_config_value_changed  (IBusConfig             *config,
                                              const gchar            *section,
                                              const gchar            *name,
+#if IBUS_CHECK_VERSION(1,3,99)
+                                             GVariant               *value,
+#else
                                              GValue                 *value,
+#endif  /* !IBUS_CHECK_VERSION(1,3,99) */
                                              IBusM17NEngineClass    *klass);
+
 static GObject*
             ibus_m17n_engine_constructor    (GType                   type,
                                              guint                   n_construct_params,
@@ -112,7 +102,6 @@ static void ibus_m17n_engine_update_lookup_table
 static IBusEngineClass *parent_class = NULL;
 
 static IBusConfig      *config = NULL;
-static IBusM17NTypeModule *module = NULL;
 
 void
 ibus_m17n_init (IBusBus *bus)
@@ -121,55 +110,6 @@ ibus_m17n_init (IBusBus *bus)
     if (config)
         g_object_ref_sink (config);
     ibus_m17n_init_common ();
-
-    module = g_object_new (IBUS_TYPE_M17N_TYPE_MODULE, NULL);
-}
-
-static gboolean
-ibus_m17n_type_module_load (GTypeModule *module)
-{
-    return TRUE;
-}
-
-static void
-ibus_m17n_type_module_unload (GTypeModule *module)
-{
-}
-
-static void
-ibus_m17n_type_module_class_init (IBusM17NTypeModuleClass *klass)
-{
-    GTypeModuleClass *module_class = G_TYPE_MODULE_CLASS (klass);
-
-    module_class->load = ibus_m17n_type_module_load;
-    module_class->unload = ibus_m17n_type_module_unload;
-}
-
-static GType
-ibus_m17n_type_module_get_type (void)
-{
-    static GType type = 0;
-
-    static const GTypeInfo type_info = {
-        sizeof (IBusM17NTypeModuleClass),
-        (GBaseInitFunc) NULL,
-        (GBaseFinalizeFunc) NULL,
-        (GClassInitFunc) ibus_m17n_type_module_class_init,
-        (GClassFinalizeFunc) NULL,
-        NULL,
-        sizeof (IBusM17NTypeModule),
-        0,
-        (GInstanceInitFunc) NULL,
-    };
-
-    if (type == 0) {
-        type = g_type_register_static (G_TYPE_TYPE_MODULE,
-                                       "IBusM17NTypeModule",
-                                       &type_info,
-                                       (GTypeFlags) 0);
-    }
-
-    return type;
 }
 
 static gboolean
@@ -212,7 +152,7 @@ ibus_m17n_scan_class_name (const gchar *class_name,
     *p = '\0';
 
     /* Find the start position of <Name> */
-    while (g_ascii_islower (*--p) && p > *lang)
+    while (!g_ascii_isupper (*--p) && p > *lang)
         ;
     g_return_val_if_fail (p > *lang, FALSE);
     *name = g_strdup (p);
@@ -232,14 +172,14 @@ ibus_m17n_engine_get_type_for_name (const gchar *engine_name)
 
     GTypeInfo type_info = {
         sizeof (IBusM17NEngineClass),
-        (GBaseInitFunc)        NULL,
-        (GBaseFinalizeFunc) NULL,
-        (GClassInitFunc)    ibus_m17n_engine_class_init,
-        (GClassFinalizeFunc)ibus_m17n_engine_class_finalize,
+        (GBaseInitFunc)      NULL,
+        (GBaseFinalizeFunc)  NULL,
+        (GClassInitFunc)     ibus_m17n_engine_class_init,
+        (GClassFinalizeFunc) NULL,
         NULL,
         sizeof (IBusM17NEngine),
         0,
-        (GInstanceInitFunc)    ibus_m17n_engine_init,
+        (GInstanceInitFunc)  ibus_m17n_engine_init,
     };
 
     if (!ibus_m17n_scan_engine_name (engine_name, &lang, &name)) {
@@ -257,11 +197,10 @@ ibus_m17n_engine_get_type_for_name (const gchar *engine_name)
     g_assert (type == 0 || g_type_is_a (type, IBUS_TYPE_ENGINE));
 
     if (type == 0) {
-        type = g_type_module_register_type (G_TYPE_MODULE (module),
-                                            IBUS_TYPE_ENGINE,
-                                            type_name,
-                                            &type_info,
-                                            (GTypeFlags) 0);
+        type = g_type_register_static (IBUS_TYPE_ENGINE,
+                                       type_name,
+                                       &type_info,
+                                       (GTypeFlags) 0);
     }
     g_free (type_name);
 
@@ -274,9 +213,9 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
     IBusObjectClass *ibus_object_class = IBUS_OBJECT_CLASS (klass);
     IBusEngineClass *engine_class = IBUS_ENGINE_CLASS (klass);
-    GValue value = { 0 };
     gchar *engine_name, *lang = NULL, *name = NULL;
     IBusM17NEngineConfig *engine_config;
+    gchar *hex;
 
     if (parent_class == NULL)
         parent_class = (IBusEngineClass *) g_type_class_peek_parent (klass);
@@ -321,44 +260,34 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
     engine_config = ibus_m17n_get_engine_config (engine_name);
     g_free (engine_name);
 
-    if (ibus_config_get_value (config,
-                               klass->config_section,
-                               "preedit_foreground",
-                               &value)) {
-        const gchar *hex = g_value_get_string (&value);
-
+    if (ibus_m17n_config_get_string (config,
+                                     klass->config_section,
+                                     "preedit_foreground",
+                                     &hex)) {
         klass->preedit_foreground = ibus_m17n_parse_color (hex);
-        g_value_unset (&value);
+        g_free (hex);
     } else if (engine_config->preedit_highlight)
         klass->preedit_foreground = PREEDIT_FOREGROUND;
 
-    if (ibus_config_get_value (config,
-                               klass->config_section,
-                               "preedit_background",
-                               &value)) {
-        const gchar *hex = g_value_get_string (&value);
-
+    if (ibus_m17n_config_get_string (config,
+                                     klass->config_section,
+                                     "preedit_background",
+                                     &hex)) {
         klass->preedit_background = ibus_m17n_parse_color (hex);
-        g_value_unset (&value);
+        g_free (hex);
     } else if (engine_config->preedit_highlight)
         klass->preedit_background = PREEDIT_BACKGROUND;
 
-    if (ibus_config_get_value (config,
-                               klass->config_section,
-                               "preedit_underline",
-                               &value)) {
-        klass->preedit_underline = g_value_get_int (&value);
-        g_value_unset (&value);
-    } else
+    if (!ibus_m17n_config_get_int (config,
+                                   klass->config_section,
+                                   "preedit_underline",
+                                   &klass->preedit_underline))
         klass->preedit_underline = IBUS_ATTR_UNDERLINE_NONE;
 
-    if (ibus_config_get_value (config,
-                               klass->config_section,
-                               "lookup_table_orientation",
-                               &value)) {
-        klass->lookup_table_orientation = g_value_get_int (&value);
-        g_value_unset (&value);
-    } else
+    if (!ibus_m17n_config_get_int (config,
+                                   klass->config_section,
+                                   "lookup_table_orientation",
+                                   &klass->lookup_table_orientation))
         klass->lookup_table_orientation = IBUS_ORIENTATION_SYSTEM;
 
     g_signal_connect (config, "value-changed",
@@ -368,42 +297,46 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
     klass->im = NULL;
 }
 
+#if IBUS_CHECK_VERSION(1,3,99)
+#define _g_variant_get_string g_variant_get_string
+#define _g_variant_get_int32 g_variant_get_int32
+#else
+#define _g_variant_get_string(value, length) g_value_get_string(value)
+#define _g_variant_get_int32 g_value_get_int
+#endif  /* !IBUS_CHECK_VERSION(1,3,99) */
+
 static void
 ibus_m17n_config_value_changed (IBusConfig          *config,
                                 const gchar         *section,
                                 const gchar         *name,
+#if IBUS_CHECK_VERSION(1,3,99)
+                                GVariant            *value,
+#else
                                 GValue              *value,
+#endif  /* !IBUS_CHECK_VERSION(1,3,99) */
                                 IBusM17NEngineClass *klass)
 {
     if (g_strcmp0 (section, klass->config_section) == 0) {
         if (g_strcmp0 (name, "preedit_foreground") == 0) {
-            const gchar *hex = g_value_get_string (value);
+            const gchar *hex = _g_variant_get_string (value, NULL);
             guint color;
             color = ibus_m17n_parse_color (hex);
             if (color != INVALID_COLOR) {
                 klass->preedit_foreground = color;
             }
         } else if (g_strcmp0 (name, "preedit_background") == 0) {
-            const gchar *hex = g_value_get_string (value);
+            const gchar *hex = _g_variant_get_string (value, NULL);
             guint color;
             color = ibus_m17n_parse_color (hex);
             if (color != INVALID_COLOR) {
                 klass->preedit_background = color;
             }
         } else if (g_strcmp0 (name, "preedit_underline") == 0) {
-            klass->preedit_underline = g_value_get_int (value);
+            klass->preedit_underline = _g_variant_get_int32 (value);
         } else if (g_strcmp0 (name, "lookup_table_orientation") == 0) {
-            klass->lookup_table_orientation = g_value_get_int (value);
+            klass->lookup_table_orientation = _g_variant_get_int32 (value);
         }
     }
-}
-
-static void
-ibus_m17n_engine_class_finalize (IBusM17NEngineClass *klass)
-{
-    if (klass->im)
-        minput_close_im (klass->im);
-    g_free (klass->config_section);
 }
 
 static void
@@ -411,6 +344,9 @@ ibus_m17n_engine_init (IBusM17NEngine *m17n)
 {
     IBusText* label;
     IBusText* tooltip;
+
+    m17n->prop_list = ibus_prop_list_new ();
+    g_object_ref_sink (m17n->prop_list);
 
     m17n->status_prop = ibus_property_new ("status",
                                            PROP_TYPE_NORMAL,
@@ -422,7 +358,9 @@ ibus_m17n_engine_init (IBusM17NEngine *m17n)
                                            0,
                                            NULL);
     g_object_ref_sink (m17n->status_prop);
+    ibus_prop_list_append (m17n->prop_list,  m17n->status_prop);
 
+#ifdef HAVE_SETUP
     label = ibus_text_new_from_string ("Setup");
     tooltip = ibus_text_new_from_string ("Configure M17N engine");
     m17n->setup_prop = ibus_property_new ("setup",
@@ -435,11 +373,8 @@ ibus_m17n_engine_init (IBusM17NEngine *m17n)
                                           PROP_STATE_UNCHECKED,
                                           NULL);
     g_object_ref_sink (m17n->setup_prop);
-
-    m17n->prop_list = ibus_prop_list_new ();
-    g_object_ref_sink (m17n->prop_list);
-    ibus_prop_list_append (m17n->prop_list,  m17n->status_prop);
     ibus_prop_list_append (m17n->prop_list, m17n->setup_prop);
+#endif  /* HAVE_SETUP */
 
     m17n->table = ibus_lookup_table_new (9, 0, TRUE, TRUE);
     g_object_ref_sink (m17n->table);
@@ -519,10 +454,12 @@ ibus_m17n_engine_destroy (IBusM17NEngine *m17n)
         m17n->status_prop = NULL;
     }
 
+#if HAVE_SETUP
     if (m17n->setup_prop) {
         g_object_unref (m17n->setup_prop);
         m17n->setup_prop = NULL;
     }
+#endif  /* HAVE_SETUP */
 
     if (m17n->table) {
         g_object_unref (m17n->table);
@@ -817,6 +754,7 @@ ibus_m17n_engine_property_activate (IBusEngine  *engine,
 {
     IBusM17NEngine *m17n = (IBusM17NEngine *) engine;
 
+#ifdef HAVE_SETUP
     if (g_strcmp0 (prop_name, "setup") == 0) {
         const gchar *engine_name;
         gchar *setup;
@@ -828,6 +766,8 @@ ibus_m17n_engine_property_activate (IBusEngine  *engine,
         g_spawn_command_line_async (setup, NULL);
         g_free (setup);
     }
+#endif  /* HAVE_SETUP */
+
     parent_class->property_activate (engine, prop_name, prop_state);
 }
 
@@ -970,8 +910,57 @@ ibus_m17n_engine_callback (MInputContext *context,
     }
     else if (command == Minput_reset) {
     }
-    else if (command == Minput_get_surrounding_text) {
+    /* ibus_engine_get_surrounding_text is only available in the current
+       git master (1.3.99+) */
+#ifdef HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT
+    else if (command == Minput_get_surrounding_text &&
+             (((IBusEngine *) m17n)->client_capabilities &
+              IBUS_CAP_SURROUNDING_TEXT) != 0) {
+        IBusText *text;
+        guint cursor_pos, nchars, nbytes;
+        MText *mt, *surround;
+        int len, pos;
+
+        ibus_engine_get_surrounding_text ((IBusEngine *) m17n,
+                                          &text,
+                                          &cursor_pos);
+        nchars = ibus_text_get_length (text);
+        nbytes = g_utf8_offset_to_pointer (text->text, nchars) - text->text;
+        mt = mconv_decode_buffer (Mcoding_utf_8, text->text, nbytes);
+        g_object_unref (text);
+
+        len = (long) mplist_value (m17n->context->plist);
+        if (len < 0) {
+            pos = cursor_pos + len;
+            if (pos < 0)
+                pos = 0;
+            surround = mtext_duplicate (mt, pos, cursor_pos);
+        }
+        else if (len > 0) {
+            pos = cursor_pos + len;
+            if (pos > nchars)
+                pos = nchars;
+            surround = mtext_duplicate (mt, cursor_pos, pos);
+        }
+        else {
+            surround = mtext ();
+        }
+        m17n_object_unref (mt);
+        mplist_set (m17n->context->plist, Mtext, surround);
+        m17n_object_unref (surround);
     }
-    else if (command == Minput_delete_surrounding_text) {
+#endif  /* !HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT */
+    else if (command == Minput_delete_surrounding_text &&
+             (((IBusEngine *) m17n)->client_capabilities &
+              IBUS_CAP_SURROUNDING_TEXT) != 0) {
+        int len;
+
+        len = (long) mplist_value (m17n->context->plist);
+        if (len < 0)
+            ibus_engine_delete_surrounding_text ((IBusEngine *) m17n,
+                                                 len, -len);
+        else if (len > 0)
+            ibus_engine_delete_surrounding_text ((IBusEngine *) m17n,
+                                                 0, len);
     }
 }

@@ -47,10 +47,11 @@ test_m17n_CFLAGS = \
 	-DDEBUG \
 	$(NULL)
 test_m17n_LDADD = \
+	libm17ncommon.a	\
 	$(AM_LDADD) \
 	$(NULL)
 
-libexec_PROGRAMS = ibus-engine-m17n ibus-setup-m17n
+libexec_PROGRAMS = ibus-engine-m17n
 
 noinst_LIBRARIES = libm17ncommon.a
 
@@ -58,6 +59,8 @@ libm17ncommon_a_SOURCES = \
 	m17nutil.c \
 	m17nutil.h \
 	$(NULL)
+libm17ncommon_a_LIBADD = $(LIBOBJS)
+
 ibus_engine_m17n_SOURCES = \
 	main.c \
 	engine.c \
@@ -69,25 +72,31 @@ ibus_engine_m17n_LDADD = \
 	@M17N_LIBS@ \
 	$(NULL)
 
-setup_DATA = \
-	ibus-m17n-preferences.ui \
-	default.xml \
-	$(NULL)
-setupdir = $(pkgdatadir)/setup
+if HAVE_GTK
+libexec_PROGRAMS += ibus-setup-m17n
 
 ibus_setup_m17n_SOURCES = \
 	setup.c \
 	$(NULL)
 ibus_setup_m17n_CFLAGS = \
-	@GTK2_CFLAGS@ \
+	@GTK_CFLAGS@ \
 	$(AM_CFLAGS) \
 	$(NULL)
 ibus_setup_m17n_LDADD = \
 	libm17ncommon.a \
 	@IBUS_LIBS@ \
 	@M17N_LIBS@ \
-	@GTK2_LIBS@ \
+	@GTK_LIBS@ \
 	$(NULL)
+dist_setup_DATA = \
+	ibus-m17n-preferences.ui \
+	$(NULL)
+endif
+
+setup_DATA = \
+	default.xml \
+	$(NULL)
+setupdir = $(pkgdatadir)/setup
 
 component_DATA = \
 	m17n.xml \
@@ -97,7 +106,6 @@ componentdir = @datadir@/ibus/component
 EXTRA_DIST = \
 	m17n.xml.in.in \
 	default.xml.in \
-	$(setup_DATA) \
 	$(NULL)
 
 DISTCLEANFILES = \

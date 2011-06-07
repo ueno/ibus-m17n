@@ -113,6 +113,17 @@ ibus_m17n_engine_new (MSymbol  lang,
     engine_icon = ibus_m17n_mtext_to_utf8 (icon);
     engine_desc = ibus_m17n_mtext_to_utf8 (desc);
 
+#if IBUS_CHECK_VERSION(1,3,99)
+    engine = ibus_engine_desc_new_varargs ("name",        engine_name,
+                                           "longname",    engine_longname,
+                                           "description", engine_desc ? engine_desc : "",
+                                           "language",    msymbol_name (lang),
+                                           "license",     "GPL",
+                                           "icon",        engine_icon ? engine_icon : "",
+                                           "layout",      "us",
+                                           "rank",        config->rank,
+                                           NULL);
+#else
     engine = ibus_engine_desc_new (engine_name,
                                    engine_longname,
                                    engine_desc ? engine_desc : "",
@@ -122,6 +133,7 @@ ibus_m17n_engine_new (MSymbol  lang,
                                    engine_icon ? engine_icon : "",
                                    "us");
     engine->rank = config->rank;
+#endif  /* !IBUS_CHECK_VERSION(1,3,99) */
 
     g_free (engine_name);
     g_free (engine_longname);
@@ -132,6 +144,10 @@ ibus_m17n_engine_new (MSymbol  lang,
     return engine;
 }
 
+#ifndef HAVE_MINPUT_LIST
+MPlist *minput_list (MSymbol language);
+#endif  /* !HAVE_MINPUT_LIST */
+
 GList *
 ibus_m17n_list_engines (void)
 {
@@ -139,25 +155,26 @@ ibus_m17n_list_engines (void)
     MPlist *imlist;
     MPlist *elm;
 
-    imlist = mdatabase_list(msymbol("input-method"), Mnil, Mnil, Mnil);
-
+    imlist = minput_list (Mnil);
     for (elm = imlist; elm && mplist_key(elm) != Mnil; elm = mplist_next(elm)) {
-        MDatabase *mdb = (MDatabase *) mplist_value(elm);
-        MSymbol *tag = mdatabase_tag(mdb);
+        MSymbol lang;
+        MSymbol name;
+        MSymbol sane;
+        MText *title = NULL;
+        MText *icon = NULL;
+        MText *desc = NULL;
+        MPlist *l;
+        gchar *engine_name;
+        IBusM17NEngineConfig *config;
 
-        if (tag[1] != Mnil && tag[2] != Mnil) {
-            MSymbol lang;
-            MSymbol name;
-            MText *title = NULL;
-            MText *icon = NULL;
-            MText *desc = NULL;
-            MPlist *l;
-            gchar *engine_name;
-            IBusM17NEngineConfig *config;
+        l = mplist_value (elm);
+        lang = mplist_value (l);
+        l = mplist_next (l);
+        name = mplist_value (l);
+        l = mplist_next (l);
+        sane = mplist_value (l);
 
-            lang = tag[1];
-            name = tag[2];
-
+        if (sane == Mt) {
             /* ignore input-method explicitly blacklisted in default.xml */
             engine_name = g_strdup_printf ("m17n:%s:%s", msymbol_name (lang), msymbol_name (name));
             config = ibus_m17n_get_engine_config (engine_name);
@@ -328,6 +345,104 @@ ibus_m17n_get_component (void)
     g_list_free (engines);
 
     return component;
+}
+
+void
+ibus_m17n_config_set_string (IBusConfig  *config,
+                             const gchar *section,
+                             const gchar *name,
+                             const gchar *value)
+{
+#if IBUS_CHECK_VERSION(1,3,99)
+    ibus_config_set_value (config, section, name, g_variant_new_string (value));
+#else
+    GValue v = { 0 };
+
+    g_value_init (&v, G_TYPE_STRING);
+    g_value_set_string (&v, value);
+    ibus_config_set_value (config, section, name, &v);
+#endif  /* !IBUS_CHECK_VERSION(1,3,99) */
+}
+
+gboolean
+ibus_m17n_config_get_string (IBusConfig  *config,
+                             const gchar *section,
+                             const gchar *name,
+                             gchar      **result)
+{
+#if IBUS_CHECK_VERSION(1,3,99)
+    GVariant *value = NULL;
+
+    g_return_val_if_fail (result != NULL, FALSE);
+
+    value = ibus_config_get_value (config, section, name);
+    if (value) {
+        *result = g_strdup (g_variant_get_string (value, NULL));
+        g_variant_unref (value);
+        return TRUE;
+    }
+    return FALSE;
+#else
+    GValue value = { 0 };
+
+    g_return_val_if_fail (result != NULL, FALSE);
+
+    if (ibus_config_get_value (config, section, name, &value)) {
+        *result = g_strdup (g_value_get_string (&value));
+        g_value_unset (&value);
+        return TRUE;
+    }
+    return FALSE;
+#endif  /* !IBUS_CHECK_VERSION(1,3,99) */
+}
+
+void
+ibus_m17n_config_set_int (IBusConfig  *config,
+                          const gchar *section,
+                          const gchar *name,
+                          gint         value)
+{
+#if IBUS_CHECK_VERSION(1,3,99)
+    ibus_config_set_value (config, section, name, g_variant_new_int32 (value));
+#else
+    GValue v = { 0 };
+
+    g_value_init (&v, G_TYPE_INT);
+    g_value_set_int (&v, value);
+    ibus_config_set_value (config, section, name, &v);
+#endif  /* !IBUS_CHECK_VERSION(1,3,99) */
+}
+
+gboolean
+ibus_m17n_config_get_int (IBusConfig  *config,
+                          const gchar *section,
+                          const gchar *name,
+                          gint        *result)
+{
+#if IBUS_CHECK_VERSION(1,3,99)
+    GVariant *value = NULL;
+
+    g_return_val_if_fail (result != NULL, FALSE);
+
+    value = ibus_config_get_value (config, section, name);
+    if (value) {
+        *result = g_variant_get_int32 (value);
+        g_variant_unref (value);
+        return TRUE;
+    }
+    return FALSE;
+#else
+    GValue value = { 0 };
+
+    g_return_val_if_fail (result != NULL, FALSE);
+
+    if (ibus_config_get_value (config, section, name, &value)) {
+        *result = g_value_get_int (&value);
+        g_value_unset (&value);
+        return TRUE;
+    }
+    return FALSE;
+#endif  /* !IBUS_CHECK_VERSION(1,3,99) */
 }
 
 #ifdef DEBUG

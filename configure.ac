@@ -22,7 +22,7 @@
 m4_define([ibus_released], [1])
 m4_define([ibus_major_version], [1])
 m4_define([ibus_minor_version], [3])
-m4_define([ibus_micro_version], [1])
+m4_define([ibus_micro_version], [2])
 m4_define(ibus_maybe_datestamp,
     m4_esyscmd([if test x]ibus_released[ != x1; then date +.%Y%m%d | tr -d '\n\r'; fi]))
 
@@ -61,9 +61,50 @@ PKG_CHECK_MODULES(M17N, [
 ])
 
 # check gtk for setup
-PKG_CHECK_MODULES(GTK2, [
-    gtk+-2.0
-])
+AC_MSG_CHECKING([which gtk+ version to compile against])
+AC_ARG_WITH([gtk],
+  [AS_HELP_STRING([--with-gtk=2.0|3.0|no],[which gtk+ version to compile against (default: 2.0)])],
+  [case "$with_gtk" in
+     2.0|3.0|no) ;;
+     *) AC_MSG_ERROR([invalid gtk version specified]) ;;
+   esac],
+  [with_gtk=2.0])
+AC_MSG_RESULT([$with_gtk])
+
+case "$with_gtk" in
+  2.0) GTK_API_VERSION=2.0
+       GTK_REQUIRED=2.12.12
+       ;;
+  3.0) GTK_API_VERSION=3.0
+       GTK_REQUIRED=2.90.5
+       ;;
+esac
+
+if test x$with_gtk != xno; then
+  PKG_CHECK_MODULES([GTK], [gtk+-$GTK_API_VERSION >= $GTK_REQUIRED], ,
+    with_gtk=no)
+  AC_DEFINE([HAVE_SETUP], [1], [Define if setup dialog is installed])
+fi
+
+AM_CONDITIONAL([HAVE_GTK],[test x$with_gtk != xno])
+
+# check if minput_list, which is available in m17n-lib 1.6.2+ (CVS)
+save_CFLAGS="$CFLAGS"
+save_LIBS="$LIBS"
+CFLAGS="$CFLAGS $M17N_CFLAGS"
+LIBS="$LIBS $M17N_LIBS"
+AC_REPLACE_FUNCS([minput_list])
+CFLAGS="$save_CFLAGS"
+LIBS="$save_LIBS"
+
+# check if ibus_engine_get_surrounding_text, which is available in ibus-1.3.99+ (git master)
+save_CFLAGS="$CFLAGS"
+save_LIBS="$LIBS"
+CFLAGS="$CFLAGS $IBUS_CFLAGS"
+LIBS="$LIBS $IBUS_LIBS"
+AC_CHECK_FUNCS([ibus_engine_get_surrounding_text])
+CFLAGS="$save_CFLAGS"
+LIBS="$save_LIBS"
 
 # define GETTEXT_* variables
 GETTEXT_PACKAGE=ibus-m17n
