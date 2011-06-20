@@ -697,6 +697,16 @@ ibus_m17n_engine_enable (IBusEngine *engine)
     IBusM17NEngine *m17n = (IBusM17NEngine *) engine;
 
     parent_class->enable (engine);
+
+#ifdef HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT
+    /* Issue a dummy ibus_engine_get_surrounding_text() call to tell
+       input context that we will use surrounding-text. */
+    IBusText *text;
+    guint cursor_pos;
+
+    ibus_engine_get_surrounding_text (engine, &text, &cursor_pos);
+    g_object_unref (text);
+#endif  /* HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT */
 }
 
 static void
