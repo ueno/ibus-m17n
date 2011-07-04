@@ -5,26 +5,32 @@
 	     first-to-last order and a "name" element in an "engine"
 	     element allows wildcard patterns.  Please keep more
 	     specific entries to appear first. -->
-	<!-- Indic engines which represent languages. -->
+	<!-- Assign higher rank for Indic engines which represent
+	     languages than other Indic engines.  Also make Alt_R as
+	     AltGr (ISO_Level3_Shift) for some engines, using
+	     xkb-options. -->
 	<engine>
 		<name>m17n:as:phonetic</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:bn:inscript</name>
+		<name>m17n:bn:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
-		<name>m17n:gu:inscript</name>
+		<name>m17n:gu:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
-		<name>m17n:hi:inscript</name>
+		<name>m17n:hi:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
 		<name>m17n:kn:kgp</name>
@@ -37,19 +43,22 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:mai:inscript</name>
+		<name>m17n:mai:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
-		<name>m17n:ml:inscript</name>
+		<name>m17n:ml:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
-		<name>m17n:mr:inscript</name>
+		<name>m17n:mr:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
 		<name>m17n:ne:rom</name>
@@ -57,14 +66,16 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:or:inscript</name>
+		<name>m17n:or:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
-		<name>m17n:pa:inscript</name>
+		<name>m17n:pa:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
 		<name>m17n:sa:harvard-kyoto</name>
@@ -72,14 +83,16 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:sd:inscript</name>
+		<name>m17n:sd:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
 		<name>m17n:si:wijesekera</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
 		<name>m17n:ta:tamil99</name>
@@ -87,9 +100,10 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:te:inscript</name>
+		<name>m17n:te:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<!-- Samanala should have lower rank than other Sinhala
 	     engines since it is the only non-keyboard input method in
@@ -226,6 +240,7 @@
 		<name>m17n:si:*</name>
 		<rank>1</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<xkb-options>lv3:ralt_switch</xkb-options>
 	</engine>
 	<engine>
 		<name>m17n:ta:*</name>

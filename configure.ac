@@ -106,6 +106,16 @@ AC_CHECK_FUNCS([ibus_engine_get_surrounding_text])
 CFLAGS="$save_CFLAGS"
 LIBS="$save_LIBS"
 
+# check XKB support libraries (libxklavier, gdk, and x11) for xkb-options
+if test x$with_gtk != xno; then
+  have_xkb=no
+  PKG_CHECK_MODULES([XKB], [libxklavier gdk-$GTK_API_VERSION x11],
+    have_xkb=yes)
+  if test x$have_xkb != xno; then
+    AC_DEFINE([HAVE_XKB], [1], [Define if xkb is found])
+  fi
+fi
+
 # define GETTEXT_* variables
 GETTEXT_PACKAGE=ibus-m17n
 AC_SUBST(GETTEXT_PACKAGE)

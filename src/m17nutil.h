@@ -16,6 +16,13 @@ struct _IBusM17NEngineConfig {
 
     /* whether to highlight preedit */
     gboolean preedit_highlight;
+
+    /* X keyboard options to which the engine switches when enabled.
+       This is particularly useful for Indic engines which needs AltGr
+       (ISO_Level3_Shift) key mapped somewhere on the US keyboard.
+       For example, to make Alt_R as AltGr, add
+       <xkb-options>lv3:ralt_switch</xkb-options> in default.xml. */
+    gchar *xkb_options;
 };
 
 typedef struct _IBusM17NEngineConfig IBusM17NEngineConfig;

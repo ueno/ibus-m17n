@@ -6,6 +6,10 @@
 #include <ibus.h>
 #include <m17n.h>
 #include <string.h>
+#ifdef HAVE_XKB
+#include <gdk/gdkx.h>
+#include <libxklavier/xklavier.h>
+#endif  /* HAVE_XKB */
 #include "m17nutil.h"
 #include "engine.h"
 
@@ -36,6 +40,10 @@ struct _IBusM17NEngineClass {
     gint lookup_table_orientation;
 
     MInputMethod *im;
+
+#if HAVE_XKB
+    XklConfigRec *xkl_config_rec;
+#endif  /* HAVE_XKB */
 };
 
 /* functions prototype */
@@ -103,12 +111,90 @@ static IBusEngineClass *parent_class = NULL;
 
 static IBusConfig      *config = NULL;
 
+#if HAVE_XKB
+static XklEngine       *xkl_engine = NULL;
+static XklConfigRec    *xkl_system_config_rec = NULL;
+
+static gboolean
+parse_xkb_options (XklConfigRec *config_rec, const gchar *xkb_options)
+{
+    gchar **strv;
+
+    strv = g_strsplit (xkb_options, ",", -1);
+    if (g_strv_length (strv) < 1) {
+        g_strfreev (strv);
+        return FALSE;
+    }
+
+    g_strfreev (config_rec->options);
+    config_rec->options = strv;
+
+    return TRUE;
+}
+
+static GdkFilterReturn
+filter_xkl_event (GdkXEvent *xev,
+                  GdkEvent  *event,
+                  gpointer   user_data)
+{
+    XEvent *xevent = (XEvent *)xev;
+
+    xkl_engine_filter_events (xkl_engine, xevent);
+    return GDK_FILTER_CONTINUE;
+}
+
+static void
+on_xkl_config_changed (XklEngine *xklengine,
+                       gpointer   user_data)
+{
+    IBusM17NEngineClass *klass = user_data;
+    XklConfigRec *config_rec;
+
+    config_rec = xkl_config_rec_new ();
+    if (!xkl_config_rec_get_from_server (config_rec, xkl_engine)) {
+        g_object_unref (config_rec);
+        g_warning ("Can't get default keyboard config from the server");
+    } else if (klass->xkl_config_rec &&
+               !xkl_config_rec_equals (config_rec, klass->xkl_config_rec)) {
+        if (xkl_system_config_rec)
+            g_object_unref (xkl_system_config_rec);
+        xkl_system_config_rec = config_rec;
+    }
+}
+#endif  /* HAVE_XKB */
+
 void
 ibus_m17n_init (IBusBus *bus)
 {
+#if HAVE_XKB
+    if (gdk_init_check (NULL, NULL)) {
+        GdkDisplay *display = gdk_display_get_default ();
+        g_assert (display);
+
+        xkl_engine = xkl_engine_get_instance (GDK_DISPLAY_XDISPLAY (display));
+        xkl_system_config_rec = xkl_config_rec_new ();
+        if (!xkl_config_rec_get_from_server (xkl_system_config_rec,
+                                             xkl_engine)) {
+            g_object_unref (xkl_system_config_rec);
+            xkl_system_config_rec = NULL;
+
+            g_warning ("Can't get default keyboard config from the server");
+        } else {
+            gdk_window_add_filter (NULL,
+                                   (GdkFilterFunc) filter_xkl_event,
+                                   NULL);
+            gdk_window_add_filter (gdk_get_default_root_window (),
+                                   (GdkFilterFunc) filter_xkl_event,
+                                   NULL);
+            xkl_engine_start_listen (xkl_engine, XKLL_TRACK_KEYBOARD_STATE);
+        }
+    }
+#endif  /* HAVE_XKB */
+
     config = ibus_bus_get_config (bus);
     if (config)
         g_object_ref_sink (config);
+
     ibus_m17n_init_common ();
 }
 
@@ -294,6 +380,27 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
                       G_CALLBACK(ibus_m17n_config_value_changed),
                       klass);
 
+#if HAVE_XKB
+    if (engine_config->xkb_options) {
+        klass->xkl_config_rec = xkl_config_rec_new ();
+        if (!xkl_config_rec_get_from_server (klass->xkl_config_rec,
+                                             xkl_engine)) {
+            g_object_unref (klass->xkl_config_rec);
+            klass->xkl_config_rec = NULL;
+            g_warning ("Can't get default keyboard config from the server");
+        } else if (!parse_xkb_options (klass->xkl_config_rec,
+                                       engine_config->xkb_options)) {
+            g_object_unref (klass->xkl_config_rec);
+            klass->xkl_config_rec = NULL;
+            g_warning ("Can't parse xkb options %s",
+                       engine_config->xkb_options);
+        }
+    }
+
+    g_signal_connect (xkl_engine, "X-config-changed",
+                      G_CALLBACK(on_xkl_config_changed), klass);
+#endif  /* HAVE_XKB */
+
     klass->im = NULL;
 }
 
@@ -470,6 +577,11 @@ ibus_m17n_engine_destroy (IBusM17NEngine *m17n)
         minput_destroy_ic (m17n->context);
         m17n->context = NULL;
     }
+
+#if HAVE_XKB
+    if (xkl_system_config_rec)
+        xkl_config_rec_activate (xkl_system_config_rec, xkl_engine);
+#endif  /* HAVE_XKB */
 
     IBUS_OBJECT_CLASS (parent_class)->destroy ((IBusObject *)m17n);
 }
@@ -707,6 +819,19 @@ ibus_m17n_engine_enable (IBusEngine *engine)
     ibus_engine_get_surrounding_text (engine, &text, &cursor_pos);
     g_object_unref (text);
 #endif  /* HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT */
+
+#if HAVE_XKB
+    GObjectClass *object_class;
+    IBusM17NEngineClass *klass;
+
+    object_class = G_OBJECT_GET_CLASS (m17n);
+    klass = (IBusM17NEngineClass *) object_class;
+
+    if (klass->xkl_config_rec) {
+        if (!xkl_config_rec_activate (klass->xkl_config_rec, xkl_engine))
+            g_warning ("Can't set the XKB layout");
+    }
+#endif  /* HAVE_XKB */
 }
 
 static void
@@ -716,6 +841,17 @@ ibus_m17n_engine_disable (IBusEngine *engine)
 
     ibus_m17n_engine_focus_out (engine);
     parent_class->disable (engine);
+
+#if HAVE_XKB
+    GObjectClass *object_class;
+    IBusM17NEngineClass *klass;
+
+    object_class = G_OBJECT_GET_CLASS (m17n);
+    klass = (IBusM17NEngineClass *) object_class;
+
+    if (xkl_system_config_rec)
+        xkl_config_rec_activate (xkl_system_config_rec, xkl_engine);
+#endif  /* HAVE_XKB */
 }
 
 static void

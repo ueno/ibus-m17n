@@ -290,6 +290,11 @@ ibus_m17n_engine_config_parse_xml_node (IBusM17NEngineConfigNode *cnode,
                            sub_node->name, sub_node->text);
             continue;
         }
+        if (g_strcmp0 (sub_node->name, "xkb-options") == 0) {
+            g_free (cnode->config.xkb_options);
+            cnode->config.xkb_options = g_strdup (sub_node->text);
+            continue;
+        }
         g_warning ("<engine> element contains invalid element <%s>",
                    sub_node->name);
     }
