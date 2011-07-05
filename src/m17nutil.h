@@ -14,6 +14,12 @@ struct _IBusM17NEngineConfig {
     /* engine rank */
     gint rank;
 
+    /* hotkeys */
+    gchar *hotkeys;
+
+    /* symbol */
+    gchar *symbol;
+
     /* whether to highlight preedit */
     gboolean preedit_highlight;
 };

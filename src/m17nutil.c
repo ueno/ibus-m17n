@@ -122,6 +122,8 @@ ibus_m17n_engine_new (MSymbol  lang,
                                            "icon",        engine_icon ? engine_icon : "",
                                            "layout",      "us",
                                            "rank",        config->rank,
+                                           "hotkeys",     config->hotkeys ? config->hotkeys : "",
+                                           "symbol",      config->symbol ? config->symbol : "",
                                            NULL);
 #else
     engine = ibus_engine_desc_new (engine_name,
@@ -280,6 +282,14 @@ ibus_m17n_engine_config_parse_xml_node (IBusM17NEngineConfigNode *cnode,
         }
         if (g_strcmp0 (sub_node->name , "rank") == 0) {
             cnode->config.rank = atoi (sub_node->text);
+            continue;
+        }
+        if (g_strcmp0 (sub_node->name , "hotkeys") == 0) {
+            cnode->config.hotkeys = g_strdup (sub_node->text);
+            continue;
+        }
+        if (g_strcmp0 (sub_node->name , "symbol") == 0) {
+            cnode->config.symbol = g_strdup (sub_node->text);
             continue;
         }
         if (g_strcmp0 (sub_node->name , "preedit-highlight") == 0) {
