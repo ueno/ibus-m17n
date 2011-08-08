@@ -15,7 +15,8 @@ static MConverter *utf8_converter = NULL;
 
 typedef enum {
     ENGINE_CONFIG_RANK_MASK = 1 << 0,
-    ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK = 1 << 1
+    ENGINE_CONFIG_LAYOUT_MASK = 1 << 1,
+    ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK = 1 << 2
 } EngineConfigMask;
 
 struct _EngineConfigNode {
@@ -130,7 +131,7 @@ ibus_m17n_engine_new (MSymbol  lang,
                                            "language",    msymbol_name (lang),
                                            "license",     "GPL",
                                            "icon",        engine_icon ? engine_icon : "",
-                                           "layout",      "us",
+                                           "layout",      config->layout ? config->layout : "us",
                                            "rank",        config->rank,
                                            NULL);
 #else
@@ -272,6 +273,8 @@ ibus_m17n_get_engine_config (const gchar *engine_name)
         if (g_pattern_match_simple (cnode->name, engine_name)) {
             if (cnode->mask & ENGINE_CONFIG_RANK_MASK)
                 config->rank = cnode->config.rank;
+            if (cnode->mask & ENGINE_CONFIG_LAYOUT_MASK)
+                config->layout = cnode->config.layout;
             if (cnode->mask & ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK)
                 config->preedit_highlight = cnode->config.preedit_highlight;
         }
@@ -302,6 +305,12 @@ ibus_m17n_engine_config_parse_xml_node (EngineConfigNode *cnode,
         if (g_strcmp0 (sub_node->name , "rank") == 0) {
             cnode->config.rank = atoi (sub_node->text);
             cnode->mask |= ENGINE_CONFIG_RANK_MASK;
+            continue;
+        }
+        if (g_strcmp0 (sub_node->name , "layout") == 0) {
+            g_free (cnode->config.layout);
+            cnode->config.layout = g_strdup (sub_node->text);
+            cnode->mask |= ENGINE_CONFIG_LAYOUT_MASK;
             continue;
         }
         if (g_strcmp0 (sub_node->name , "preedit-highlight") == 0) {
