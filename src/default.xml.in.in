@@ -12,19 +12,22 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:bn:inscript</name>
+		<name>m17n:bn:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
-		<name>m17n:gu:inscript</name>
+		<name>m17n:gu:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
-		<name>m17n:hi:inscript</name>
+		<name>m17n:hi:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
 		<name>m17n:kn:kgp</name>
@@ -37,19 +40,22 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:mai:inscript</name>
+		<name>m17n:mai:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
-		<name>m17n:ml:inscript</name>
+		<name>m17n:ml:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
-		<name>m17n:mr:inscript</name>
+		<name>m17n:mr:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
 		<name>m17n:ne:rom</name>
@@ -57,14 +63,16 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:or:inscript</name>
+		<name>m17n:or:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
-		<name>m17n:pa:inscript</name>
+		<name>m17n:pa:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
 		<name>m17n:sa:harvard-kyoto</name>
@@ -72,14 +80,16 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:sd:inscript</name>
+		<name>m17n:sd:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
 		<name>m17n:si:wijesekera</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
 		<name>m17n:ta:tamil99</name>
@@ -87,9 +97,10 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 	</engine>
 	<engine>
-		<name>m17n:te:inscript</name>
+		<name>m17n:te:inscript*</name>
 		<rank>2</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<!-- Samanala should have lower rank than other Sinhala
 	     engines since it is the only non-keyboard input method in
@@ -226,6 +237,7 @@
 		<name>m17n:si:*</name>
 		<rank>1</rank>
 		<preedit-highlight>FALSE</preedit-highlight>
+		<layout>default[lv3:ralt_switch]</layout>
 	</engine>
 	<engine>
 		<name>m17n:ta:*</name>

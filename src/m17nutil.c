@@ -120,7 +120,7 @@ ibus_m17n_engine_new (MSymbol  lang,
                                            "language",    msymbol_name (lang),
                                            "license",     "GPL",
                                            "icon",        engine_icon ? engine_icon : "",
-                                           "layout",      "us",
+                                           "layout",      config->layout ? config->layout : "us",
                                            "rank",        config->rank,
                                            NULL);
 #else
@@ -280,6 +280,11 @@ ibus_m17n_engine_config_parse_xml_node (IBusM17NEngineConfigNode *cnode,
         }
         if (g_strcmp0 (sub_node->name , "rank") == 0) {
             cnode->config.rank = atoi (sub_node->text);
+            continue;
+        }
+        if (g_strcmp0 (sub_node->name , "layout") == 0) {
+            g_free (cnode->config.layout);
+            cnode->config.layout = g_strdup (sub_node->text);
             continue;
         }
         if (g_strcmp0 (sub_node->name , "preedit-highlight") == 0) {
