@@ -701,11 +701,7 @@ ibus_m17n_engine_enable (IBusEngine *engine)
 #ifdef HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT
     /* Issue a dummy ibus_engine_get_surrounding_text() call to tell
        input context that we will use surrounding-text. */
-    IBusText *text;
-    guint cursor_pos;
-
-    ibus_engine_get_surrounding_text (engine, &text, &cursor_pos);
-    g_object_unref (text);
+    ibus_engine_get_surrounding_text (engine, NULL, NULL, NULL);
 #endif  /* HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT */
 }
 
@@ -927,13 +923,14 @@ ibus_m17n_engine_callback (MInputContext *context,
              (((IBusEngine *) m17n)->client_capabilities &
               IBUS_CAP_SURROUNDING_TEXT) != 0) {
         IBusText *text;
-        guint cursor_pos, nchars, nbytes;
+        guint cursor_pos, anchor_pos, nchars, nbytes;
         MText *mt, *surround;
         int len, pos;
 
         ibus_engine_get_surrounding_text ((IBusEngine *) m17n,
                                           &text,
-                                          &cursor_pos);
+                                          &cursor_pos,
+                                          &anchor_pos);
         nchars = ibus_text_get_length (text);
         nbytes = g_utf8_offset_to_pointer (text->text, nchars) - text->text;
         mt = mconv_decode_buffer (Mcoding_utf_8, text->text, nbytes);
