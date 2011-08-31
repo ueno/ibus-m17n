@@ -17,6 +17,12 @@ struct _IBusM17NEngineConfig {
     /* keyboard layout */
     gchar *layout;
 
+    /* hotkeys */
+    gchar *hotkeys;
+
+    /* symbol */
+    gchar *symbol;
+
     /* whether to highlight preedit */
     gboolean preedit_highlight;
 };

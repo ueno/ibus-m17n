@@ -114,6 +114,9 @@ AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE,"$GETTEXT_PACKAGE", [Define to the read-only 
 AM_GNU_GETTEXT([external])
 AM_GNU_GETTEXT_VERSION(0.16.1)
 
+# hotkeys in component xml
+IBUS_WITH_HOTKEYS
+
 
 # OUTPUT files
 AC_CONFIG_FILES([ po/Makefile.in

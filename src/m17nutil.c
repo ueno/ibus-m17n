@@ -16,7 +16,9 @@ static MConverter *utf8_converter = NULL;
 typedef enum {
     ENGINE_CONFIG_RANK_MASK = 1 << 0,
     ENGINE_CONFIG_LAYOUT_MASK = 1 << 1,
-    ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK = 1 << 2
+    ENGINE_CONFIG_HOTKEYS_MASK = 1 << 2,
+    ENGINE_CONFIG_SYMBOL_MASK = 1 << 3,
+    ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK = 1 << 4
 } EngineConfigMask;
 
 struct _EngineConfigNode {
@@ -133,6 +135,8 @@ ibus_m17n_engine_new (MSymbol  lang,
                                            "icon",        engine_icon ? engine_icon : "",
                                            "layout",      config->layout ? config->layout : "us",
                                            "rank",        config->rank,
+                                           "hotkeys",     config->hotkeys ? config->hotkeys : "",
+                                           "symbol",      config->symbol ? config->symbol : "",
                                            NULL);
 #else
     engine = ibus_engine_desc_new (engine_name,
@@ -275,6 +279,10 @@ ibus_m17n_get_engine_config (const gchar *engine_name)
                 config->rank = cnode->config.rank;
             if (cnode->mask & ENGINE_CONFIG_LAYOUT_MASK)
                 config->layout = cnode->config.layout;
+            if (cnode->mask & ENGINE_CONFIG_HOTKEYS_MASK)
+                config->hotkeys = cnode->config.hotkeys;
+            if (cnode->mask & ENGINE_CONFIG_SYMBOL_MASK)
+                config->symbol = cnode->config.symbol;
             if (cnode->mask & ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK)
                 config->preedit_highlight = cnode->config.preedit_highlight;
         }
@@ -311,6 +319,16 @@ ibus_m17n_engine_config_parse_xml_node (EngineConfigNode *cnode,
             g_free (cnode->config.layout);
             cnode->config.layout = g_strdup (sub_node->text);
             cnode->mask |= ENGINE_CONFIG_LAYOUT_MASK;
+            continue;
+        }
+        if (g_strcmp0 (sub_node->name , "hotkeys") == 0) {
+            cnode->config.hotkeys = g_strdup (sub_node->text);
+            cnode->mask |= ENGINE_CONFIG_HOTKEYS_MASK;
+            continue;
+        }
+        if (g_strcmp0 (sub_node->name , "symbol") == 0) {
+            cnode->config.symbol = g_strdup (sub_node->text);
+            cnode->mask |= ENGINE_CONFIG_SYMBOL_MASK;
             continue;
         }
         if (g_strcmp0 (sub_node->name , "preedit-highlight") == 0) {
