@@ -13,12 +13,18 @@ static MConverter *utf8_converter = NULL;
 
 #define DEFAULT_XML (SETUPDIR "/default.xml")
 
-struct _IBusM17NEngineConfigNode {
+typedef enum {
+    ENGINE_CONFIG_RANK_MASK = 1 << 0,
+    ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK = 1 << 1
+} EngineConfigMask;
+
+struct _EngineConfigNode {
     gchar *name;
+    EngineConfigMask mask;
     IBusM17NEngineConfig config;
 };
 
-typedef struct _IBusM17NEngineConfigNode IBusM17NEngineConfigNode;
+typedef struct _EngineConfigNode EngineConfigNode;
 
 static GSList *config_list = NULL;
 
@@ -257,20 +263,31 @@ ibus_m17n_list_engines (void)
 IBusM17NEngineConfig *
 ibus_m17n_get_engine_config (const gchar *engine_name)
 {
+    IBusM17NEngineConfig *config = g_slice_new0 (IBusM17NEngineConfig);
     GSList *p;
 
     for (p = config_list; p != NULL; p = p->next) {
-        IBusM17NEngineConfigNode *cnode = p->data;
+        EngineConfigNode *cnode = p->data;
 
-        if (g_pattern_match_simple (cnode->name, engine_name))
-            return &cnode->config;
+        if (g_pattern_match_simple (cnode->name, engine_name)) {
+            if (cnode->mask & ENGINE_CONFIG_RANK_MASK)
+                config->rank = cnode->config.rank;
+            if (cnode->mask & ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK)
+                config->preedit_highlight = cnode->config.preedit_highlight;
+        }
     }
-    g_return_val_if_reached (NULL);
+    return config;
+}
+
+void
+ibus_m17n_engine_config_free (IBusM17NEngineConfig *config)
+{
+    g_slice_free (IBusM17NEngineConfig, config);
 }
 
 static gboolean
-ibus_m17n_engine_config_parse_xml_node (IBusM17NEngineConfigNode *cnode,
-                                        XMLNode                  *node)
+ibus_m17n_engine_config_parse_xml_node (EngineConfigNode *cnode,
+                                        XMLNode          *node)
 {
     GList *p;
 
@@ -284,6 +301,7 @@ ibus_m17n_engine_config_parse_xml_node (IBusM17NEngineConfigNode *cnode,
         }
         if (g_strcmp0 (sub_node->name , "rank") == 0) {
             cnode->config.rank = atoi (sub_node->text);
+            cnode->mask |= ENGINE_CONFIG_RANK_MASK;
             continue;
         }
         if (g_strcmp0 (sub_node->name , "preedit-highlight") == 0) {
@@ -292,6 +310,7 @@ ibus_m17n_engine_config_parse_xml_node (IBusM17NEngineConfigNode *cnode,
             else if (g_ascii_strcasecmp ("FALSE", sub_node->text) != 0)
                 g_warning ("<%s> element contains invalid boolean value %s",
                            sub_node->name, sub_node->text);
+            cnode->mask |= ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK;
             continue;
         }
         g_warning ("<engine> element contains invalid element <%s>",
@@ -320,7 +339,7 @@ ibus_m17n_get_component (void)
     if (node && g_strcmp0 (node->name, "engines") == 0) {
         for (p = node->sub_nodes; p != NULL; p = p->next) {
             XMLNode *sub_node = p->data;
-            IBusM17NEngineConfigNode *cnode;
+            EngineConfigNode *cnode;
 
             if (g_strcmp0 (sub_node->name, "engine") != 0) {
                 g_warning ("<engines> element contains invalid element <%s>",
@@ -328,9 +347,9 @@ ibus_m17n_get_component (void)
                 continue;
             }
 
-            cnode = g_slice_new0 (IBusM17NEngineConfigNode);
+            cnode = g_slice_new0 (EngineConfigNode);
             if (!ibus_m17n_engine_config_parse_xml_node (cnode, sub_node)) {
-                g_slice_free (IBusM17NEngineConfigNode, cnode);
+                g_slice_free (EngineConfigNode, cnode);
                 continue;
             }
             config_list = g_slist_prepend (config_list, cnode);
@@ -448,30 +467,3 @@ ibus_m17n_config_get_int (IBusConfig  *config,
     return FALSE;
 #endif  /* !IBUS_CHECK_VERSION(1,3,99) */
 }
-
-#ifdef DEBUG
-#include <locale.h>
-
-int main ()
-{
-    IBusComponent *component;
-    GString *output;
-
-    setlocale (LC_ALL, "");
-    ibus_init ();
-    ibus_m17n_init_common ();
-
-    component = ibus_m17n_get_component ();
-
-    output = g_string_new ("");
-
-    ibus_component_output (component, output, 1);
-
-    g_debug ("\n%s", output->str);
-
-    g_string_free (output, TRUE);
-    g_object_unref (component);
-
-    return 0;
-}
-#endif

@@ -40,11 +40,10 @@ TESTS = \
 
 
 test_m17n_SOURCES = \
-	m17nutil.c \
+	test.c \
 	$(NULL)
 test_m17n_CFLAGS = \
 	$(AM_CFLAGS) \
-	-DDEBUG \
 	$(NULL)
 test_m17n_LDADD = \
 	libm17ncommon.a	\

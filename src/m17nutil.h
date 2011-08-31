@@ -30,6 +30,7 @@ gunichar      *ibus_m17n_mtext_to_ucs4     (MText       *text,
 guint          ibus_m17n_parse_color       (const gchar *hex);
 IBusM17NEngineConfig
               *ibus_m17n_get_engine_config (const gchar *engine_name);
+void           ibus_m17n_engine_config_free (IBusM17NEngineConfig *config);
 void           ibus_m17n_config_set_string (IBusConfig  *config,
                                             const gchar *section,
                                             const gchar *name,
