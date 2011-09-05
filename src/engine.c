@@ -290,6 +290,8 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
                                    &klass->lookup_table_orientation))
         klass->lookup_table_orientation = IBUS_ORIENTATION_SYSTEM;
 
+    ibus_m17n_engine_config_free (engine_config);
+
     g_signal_connect (config, "value-changed",
                       G_CALLBACK(ibus_m17n_config_value_changed),
                       klass);
