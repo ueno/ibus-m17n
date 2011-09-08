@@ -263,9 +263,10 @@
                             <property name="hscrollbar_policy">automatic</property>
                             <property name="vscrollbar_policy">automatic</property>
                             <child>
-                              <object class="GtkTreeView" id="treeviewMimConfig">
+                              <object class="GtkTreeView" id="treeview_mim_config">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="has_tooltip">True</property>
                                 <property name="enable_grid_lines">both</property>
                               </object>
                             </child>
