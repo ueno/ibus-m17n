@@ -816,8 +816,15 @@ ibus_m17n_engine_update_lookup_table (IBusM17NEngine *m17n)
             ibus_lookup_table_set_page_size (m17n->table, mtext_len (mt));
 
             buf = ibus_m17n_mtext_to_ucs4 (mt, &nchars);
-            for (i = 0; i < nchars; i++) {
-                ibus_lookup_table_append_candidate (m17n->table, ibus_text_new_from_unichar (buf[i]));
+            g_warn_if_fail (buf != NULL);
+
+            for (i = 0; buf != NULL && i < nchars; i++) {
+                IBusText *text = ibus_text_new_from_unichar (buf[i]);
+                if (text == NULL) {
+                    text = ibus_text_new_from_printf ("INVCODE=U+08X%", buf[i]);
+                    g_warn_if_reached ();
+                }
+                ibus_lookup_table_append_candidate (m17n->table, text);
             }
             g_free (buf);
         }
@@ -834,8 +841,14 @@ ibus_m17n_engine_update_lookup_table (IBusM17NEngine *m17n)
                 mtext = (MText *) mplist_value (p);
                 buf = ibus_m17n_mtext_to_utf8 (mtext);
                 if (buf) {
-                    ibus_lookup_table_append_candidate (m17n->table, ibus_text_new_from_string (buf));
+                    ibus_lookup_table_append_candidate (m17n->table,
+                        ibus_text_new_from_string (buf));
                     g_free (buf);
+                }
+                else {
+                    ibus_lookup_table_append_candidate (m17n->table,
+                        ibus_text_new_from_static_string ("NULL"));
+                    g_warn_if_reached();
                 }
             }
         }
