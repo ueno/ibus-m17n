@@ -12,6 +12,7 @@
 		<preedit-highlight>FALSE</preedit-highlight>
 		<symbol></symbol>
 		@IBUS_HOTKEYS_XML@
+		<virtual-keyboard>us</virtual-keyboard>
 	</engine>
 	<!-- Indic engines should be selected by default:
 	     https://bugzilla.redhat.com/show_bug.cgi?id=640896 -->
@@ -409,5 +410,115 @@
 	<engine>
 		<name>m17n:zh:tonepy*</name>
 		<symbol>调</symbol>
+	</engine>
+
+	<!-- Virtual keyboard. -->
+	<engine>
+		<name>m17n:ar:kbd</name>
+		<virtual-keyboard>ar</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:be:kbd</name>
+		<virtual-keyboard>be</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:fa:kbd</name>
+		<virtual-keyboard>fa</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:he:kbd</name>
+		<virtual-keyboard>he</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:kk:kbd</name>
+		<virtual-keyboard>kk</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:ks:kbd</name>
+		<virtual-keyboard>ks</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:my:kbd</name>
+		<virtual-keyboard>my</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:ru:kbd</name>
+		<virtual-keyboard>ru</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:ua:kbd</name>
+		<virtual-keyboard>ua</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:ug:kbd</name>
+		<virtual-keyboard>ug</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:be:kbd</name>
+		<virtual-keyboard>be</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:th:*</name>
+		<virtual-keyboard>th</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:zh:bopomofo</name>
+		<virtual-keyboard>zh-bopomofo</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:as:inscript</name>
+		<virtual-keyboard>as-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:bn:inscript</name>
+		<virtual-keyboard>bn-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:gu:inscript</name>
+		<virtual-keyboard>gu-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:hi:inscript</name>
+		<virtual-keyboard>hi-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:kn:inscript</name>
+		<virtual-keyboard>kn-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:ks:inscript</name>
+		<virtual-keyboard>kn-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:mai:inscript</name>
+		<virtual-keyboard>mai-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:ml:inscript</name>
+		<virtual-keyboard>ml-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:mr:inscript</name>
+		<virtual-keyboard>mr-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:or:inscript</name>
+		<virtual-keyboard>or-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:pa:inscript</name>
+		<virtual-keyboard>pa-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:sd:inscript</name>
+		<virtual-keyboard>sd-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:ta:inscript</name>
+		<virtual-keyboard>ta-inscript</virtual-keyboard>
+	</engine>
+	<engine>
+		<name>m17n:te:inscript</name>
+		<virtual-keyboard>te-inscript</virtual-keyboard>
 	</engine>
 </engines>

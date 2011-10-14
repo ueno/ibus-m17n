@@ -25,6 +25,9 @@ struct _IBusM17NEngineConfig {
 
     /* whether to highlight preedit */
     gboolean preedit_highlight;
+
+    /* virtual keyboard */
+    gchar *virtual_keyboard;
 };
 
 typedef struct _IBusM17NEngineConfig IBusM17NEngineConfig;

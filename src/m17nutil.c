@@ -18,7 +18,8 @@ typedef enum {
     ENGINE_CONFIG_LAYOUT_MASK = 1 << 1,
     ENGINE_CONFIG_HOTKEYS_MASK = 1 << 2,
     ENGINE_CONFIG_SYMBOL_MASK = 1 << 3,
-    ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK = 1 << 4
+    ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK = 1 << 4,
+    ENGINE_CONFIG_VIRTUAL_KEYBOARD_MASK = 1 << 5
 } EngineConfigMask;
 
 struct _EngineConfigNode {
@@ -285,6 +286,8 @@ ibus_m17n_get_engine_config (const gchar *engine_name)
                 config->symbol = cnode->config.symbol;
             if (cnode->mask & ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK)
                 config->preedit_highlight = cnode->config.preedit_highlight;
+            if (cnode->mask & ENGINE_CONFIG_VIRTUAL_KEYBOARD_MASK)
+                config->virtual_keyboard = cnode->config.virtual_keyboard;
         }
     }
     return config;
@@ -338,6 +341,12 @@ ibus_m17n_engine_config_parse_xml_node (EngineConfigNode *cnode,
                 g_warning ("<%s> element contains invalid boolean value %s",
                            sub_node->name, sub_node->text);
             cnode->mask |= ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK;
+            continue;
+        }
+        if (g_strcmp0 (sub_node->name , "virtual-keyboard") == 0) {
+            gchar *p;
+            cnode->config.virtual_keyboard = g_strdup (sub_node->text);
+            cnode->mask |= ENGINE_CONFIG_VIRTUAL_KEYBOARD_MASK;
             continue;
         }
         g_warning ("<engine> element contains invalid element <%s>",

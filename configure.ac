@@ -88,6 +88,44 @@ fi
 
 AM_CONDITIONAL([HAVE_GTK],[test x$with_gtk != xno])
 
+dnl check ibus-charmap for charmap
+AC_MSG_CHECKING([whether you enable ibus-charmap])
+AC_ARG_ENABLE(ibus-charmap,
+              AS_HELP_STRING([--enable-charmap=no/yes],
+                             [Enable ibus-charmap default=yes]),
+              enable_charmap=$enableval,
+              enable_charmap=yes)
+AC_MSG_RESULT($enable_charmap)
+
+if test x$enable_charmap = xyes; then
+  PKG_CHECK_MODULES([IBUS_CHARMAP], [ibus-charmap], , enable_charmap=no)
+  if test x$enable_charmap = xyes; then
+    AC_DEFINE([HAVE_IBUS_CHARMAP], [1], [Define if ibus-charmap is found])
+  fi
+fi
+AM_CONDITIONAL(ENABLE_CHARMAP, [test x$enable_charmap = xyes])
+
+dnl check ibus-virtkbd for virtkbd
+AC_MSG_CHECKING([whether you enable ibus-virtkbd])
+AC_ARG_ENABLE(ibus-virtkbd,
+              AS_HELP_STRING([--enable-virtkbd=no/yes],
+                             [Enable ibus-virtkbd default=yes]),
+              enable_virtkbd=$enableval,
+              enable_virtkbd=yes)
+AC_MSG_RESULT($enable_virtkbd)
+
+if test x$enable_virtkbd = xyes; then
+  PKG_CHECK_MODULES([IBUS_VIRTKBD], [ibus-virtkbd], , enable_virtkbd=no)
+  if test x$enable_virtkbd = xyes; then
+    AC_DEFINE([HAVE_IBUS_VIRTKBD], [1], [Define if ibus-virtkbd is found])
+  fi
+fi
+AM_CONDITIONAL(ENABLE_VIRTKBD, [test x$enable_virtkbd = xyes])
+
+if test x$enable_charmap = xyes -o x$enable_virtkbd = xyes; then
+  AC_DEFINE([HAVE_IBUS_PANEL_EXTENSIONS], [1], [Define if ibus-panel-extensions is found])
+fi
+
 # check if minput_list, which is available in m17n-lib 1.6.2+ (CVS)
 save_CFLAGS="$CFLAGS"
 save_LIBS="$LIBS"

@@ -4,10 +4,26 @@
 #endif
 
 #include <ibus.h>
+#ifdef HAVE_IBUS_CHARMAP
+#include <ibus/ibuscharmap.h>
+#endif  /* HAVE_IBUS_CHARMAP */
+#ifdef HAVE_IBUS_VIRTKBD
+#include <ibus/ibusvirtkbd.h>
+#endif  /* HAVE_IBUS_VIRTKBD */
 #include <m17n.h>
 #include <string.h>
 #include "m17nutil.h"
 #include "engine.h"
+
+enum {
+    PROP_STATUS,
+    PROP_EXTENSION_NONE,
+    PROP_EXTENSION_CHARMAP,
+    PROP_EXTENSION_VIRTKBD,
+    PROP_EXTENSION_LAST = PROP_EXTENSION_VIRTKBD,
+    PROP_SETUP,
+    PROP_LAST
+};
 
 typedef struct _IBusM17NEngine IBusM17NEngine;
 typedef struct _IBusM17NEngineClass IBusM17NEngineClass;
@@ -18,10 +34,25 @@ struct _IBusM17NEngine {
     /* members */
     MInputContext *context;
     IBusLookupTable *table;
-    IBusProperty    *status_prop;
-#ifdef HAVE_SETUP
-    IBusProperty    *setup_prop;
-#endif  /* HAVE_SETUP */
+
+#ifdef HAVE_IBUS_PANEL_EXTENSIONS
+    IBusPanelExtension *extension;
+#ifdef HAVE_IBUS_CHARMAP
+    IBusPanelExtension *charmap;
+#endif  /* HAVE_IBUS_CHARMAP */
+#ifdef HAVE_IBUS_VIRTKBD
+    IBusPanelExtension *virtkbd;
+#endif  /* HAVE_IBUS_VIRTKBD */
+
+    /* remember cursor location for place panel extension near the
+       cursor */
+    gint x;
+    gint y;
+    gint w;
+    gint h;
+#endif  /* HAVE_IBUS_PANEL_EXTENSIONS */
+
+    IBusProperty    *props[PROP_LAST];
     IBusPropList    *prop_list;
 };
 
@@ -34,6 +65,7 @@ struct _IBusM17NEngineClass {
     guint preedit_background;
     gint preedit_underline;
     gint lookup_table_orientation;
+    gchar *virtual_keyboard;
 
     MInputMethod *im;
 };
@@ -67,7 +99,8 @@ static void ibus_m17n_engine_focus_out      (IBusEngine             *engine);
 static void ibus_m17n_engine_reset          (IBusEngine             *engine);
 static void ibus_m17n_engine_enable         (IBusEngine             *engine);
 static void ibus_m17n_engine_disable        (IBusEngine             *engine);
-static void ibus_engine_set_cursor_location (IBusEngine             *engine,
+static void ibus_m17n_engine_set_cursor_location
+                                            (IBusEngine             *engine,
                                              gint                    x,
                                              gint                    y,
                                              gint                    w,
@@ -98,6 +131,24 @@ static void ibus_m17n_engine_callback       (MInputContext          *context,
 static void ibus_m17n_engine_update_preedit (IBusM17NEngine *m17n);
 static void ibus_m17n_engine_update_lookup_table
                                             (IBusM17NEngine *m17n);
+static void ibus_m17n_extension_notify_visible (GObject        *object,
+                                                GParamSpec     *pspec,
+                                                IBusM17NEngine *m17n);
+static void
+ibus_m17n_engine_select_string (IBusM17NEngine *m17n,
+                                const gchar    *string);
+#ifdef HAVE_IBUS_CHARMAP
+static void
+ibus_m17n_charmap_character_activated (IBusCharmap *charmap,
+                                       gunichar uc,
+                                       IBusM17NEngine *m17n);
+#endif  /* HAVE_IBUS_CHARMAP */
+#ifdef HAVE_IBUS_VIRTKBD
+static void
+ibus_m17n_virtkbd_text_activated (IBusVirtkbd *virtkbd,
+                                  const gchar *text,
+                                  IBusM17NEngine *m17n);
+#endif  /* HAVE_IBUS_VIRTKBD */
 
 static IBusEngineClass *parent_class = NULL;
 
@@ -228,6 +279,7 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
     engine_class->reset = ibus_m17n_engine_reset;
     engine_class->enable = ibus_m17n_engine_enable;
     engine_class->disable = ibus_m17n_engine_disable;
+    engine_class->set_cursor_location = ibus_m17n_engine_set_cursor_location;
 
     engine_class->focus_in = ibus_m17n_engine_focus_in;
     engine_class->focus_out = ibus_m17n_engine_focus_out;
@@ -290,6 +342,8 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
                                    &klass->lookup_table_orientation))
         klass->lookup_table_orientation = IBUS_ORIENTATION_SYSTEM;
 
+    klass->virtual_keyboard = engine_config->virtual_keyboard;
+
     ibus_m17n_engine_config_free (engine_config);
 
     g_signal_connect (config, "value-changed",
@@ -346,36 +400,108 @@ ibus_m17n_engine_init (IBusM17NEngine *m17n)
 {
     IBusText* label;
     IBusText* tooltip;
+    IBusM17NEngineClass *klass = (IBusM17NEngineClass *) G_OBJECT_GET_CLASS (m17n);
+    IBusProperty *prop;
+    IBusPropList *prop_list;
 
     m17n->prop_list = ibus_prop_list_new ();
     g_object_ref_sink (m17n->prop_list);
 
-    m17n->status_prop = ibus_property_new ("status",
-                                           PROP_TYPE_NORMAL,
-                                           NULL,
-                                           NULL,
-                                           NULL,
-                                           TRUE,
-                                           FALSE,
-                                           0,
-                                           NULL);
-    g_object_ref_sink (m17n->status_prop);
-    ibus_prop_list_append (m17n->prop_list,  m17n->status_prop);
+    prop = ibus_property_new ("status",
+                              PROP_TYPE_NORMAL,
+                              NULL,
+                              NULL,
+                              NULL,
+                              TRUE,
+                              FALSE,
+                              0,
+                              NULL);
+    g_object_ref_sink (prop);
+    ibus_prop_list_append (m17n->prop_list, prop);
+    m17n->props[PROP_STATUS] = prop;
+
+    prop_list = ibus_prop_list_new ();
+    g_object_ref_sink (prop_list);
+
+#ifdef HAVE_IBUS_PANEL_EXTENSIONS
+    label = ibus_text_new_from_string ("None");
+    tooltip = ibus_text_new_from_string ("None");
+    prop = ibus_property_new ("extension-none",
+                              PROP_TYPE_RADIO,
+                              label,
+                              NULL,
+                              tooltip,
+                              TRUE,
+                              TRUE,
+                              PROP_STATE_CHECKED,
+                              NULL);
+    g_object_ref_sink (prop);
+    ibus_prop_list_append (prop_list, prop);
+    m17n->props[PROP_EXTENSION_NONE] = prop;
+
+#ifdef HAVE_IBUS_CHARMAP
+    label = ibus_text_new_from_string ("Character Map");
+    tooltip = ibus_text_new_from_string ("Show character map");
+    prop = ibus_property_new ("extension-charmap",
+                              PROP_TYPE_RADIO,
+                              label,
+                              NULL,
+                              tooltip,
+                              TRUE,
+                              TRUE,
+                              PROP_STATE_UNCHECKED,
+                              NULL);
+    g_object_ref_sink (prop);
+    ibus_prop_list_append (prop_list, prop);
+    m17n->props[PROP_EXTENSION_CHARMAP] = prop;
+#endif  /* HAVE_IBUS_CHARMAP */
+
+#ifdef HAVE_IBUS_VIRTKBD
+    label = ibus_text_new_from_string ("Virtual Keyboard");
+    tooltip = ibus_text_new_from_string ("Show virtual keyboard");
+    prop = ibus_property_new ("extension-virtkbd",
+                              PROP_TYPE_RADIO,
+                              label,
+                              NULL,
+                              tooltip,
+                              TRUE,
+                              TRUE,
+                              PROP_STATE_UNCHECKED,
+                              NULL);
+    g_object_ref_sink (prop);
+    ibus_prop_list_append (prop_list, prop);
+    m17n->props[PROP_EXTENSION_VIRTKBD] = prop;
+#endif  /* HAVE_IBUS_VIRTKBD */
+
+    label = ibus_text_new_from_string ("Extensions");
+    prop = ibus_property_new ("extensions",
+                              PROP_TYPE_MENU,
+                              label,
+                              "preferences-desktop-accessibility",
+                              label,
+                              TRUE,
+                              TRUE,
+                              0,
+                              prop_list);
+    g_object_ref_sink (prop);
+    ibus_prop_list_append (m17n->prop_list, prop);
+#endif  /* HAVE_IBUS_PANEL_EXTENSIONS */
 
 #ifdef HAVE_SETUP
     label = ibus_text_new_from_string ("Setup");
     tooltip = ibus_text_new_from_string ("Configure M17N engine");
-    m17n->setup_prop = ibus_property_new ("setup",
-                                          PROP_TYPE_NORMAL,
-                                          label,
-                                          "gtk-preferences",
-                                          tooltip,
-                                          TRUE,
-                                          TRUE,
-                                          PROP_STATE_UNCHECKED,
-                                          NULL);
-    g_object_ref_sink (m17n->setup_prop);
-    ibus_prop_list_append (m17n->prop_list, m17n->setup_prop);
+    prop = ibus_property_new ("setup",
+                              PROP_TYPE_NORMAL,
+                              label,
+                              "gtk-preferences",
+                              tooltip,
+                              TRUE,
+                              TRUE,
+                              PROP_STATE_UNCHECKED,
+                              NULL);
+    g_object_ref_sink (prop);
+    ibus_prop_list_append (m17n->prop_list, prop);
+    m17n->props[PROP_SETUP] = prop;
 #endif  /* HAVE_SETUP */
 
     m17n->table = ibus_lookup_table_new (9, 0, TRUE, TRUE);
@@ -391,6 +517,7 @@ ibus_m17n_engine_constructor (GType                   type,
     IBusM17NEngine *m17n;
     GObjectClass *object_class;
     IBusM17NEngineClass *klass;
+    GError *error;
 
     m17n = (IBusM17NEngine *) G_OBJECT_CLASS (parent_class)->constructor (type,
                                                        n_construct_params,
@@ -440,28 +567,68 @@ ibus_m17n_engine_constructor (GType                   type,
 
     m17n->context = minput_create_ic (klass->im, m17n);
 
+
+#ifdef HAVE_IBUS_CHARMAP
+    error = NULL;
+    m17n->charmap = ibus_charmap_new (ibus_service_get_connection (IBUS_SERVICE (m17n)), &error);
+    if (error != NULL) {
+        g_warning ("Can not create charmap %s", error->message);
+        g_error_free (error);
+    } else {
+        const gchar *engine_name;
+        gchar *lang = NULL, *name = NULL;
+
+        engine_name = ibus_engine_get_name ((IBusEngine *) m17n);
+        if (ibus_m17n_scan_engine_name (engine_name, &lang, &name)) {
+            MText *text = mlanguage_text (msymbol (lang));
+            gchar *string = ibus_m17n_mtext_to_utf8 (text);
+            ibus_m17n_engine_select_string (m17n, string);
+            g_free (string);
+            g_signal_connect (m17n->charmap, "character-activated",
+                              G_CALLBACK (ibus_m17n_charmap_character_activated),
+                              m17n);
+            g_signal_connect (m17n->charmap, "notify::visible",
+                              G_CALLBACK (ibus_m17n_extension_notify_visible),
+                              m17n);
+        }
+    }
+#endif  /* HAVE_IBUS_CHARMAP */
+
+#ifdef HAVE_IBUS_VIRTKBD
+    error = NULL;
+    m17n->virtkbd = ibus_virtkbd_new (ibus_service_get_connection (IBUS_SERVICE (m17n)), &error);
+    if (error != NULL) {
+        g_warning ("Can not create virtual keyboard %s", error->message);
+        g_error_free (error);
+    } else if (klass->virtual_keyboard != NULL) {
+        ibus_virtkbd_set_keyboard (IBUS_VIRTKBD (m17n->virtkbd),
+                                   klass->virtual_keyboard);
+        g_signal_connect (m17n->virtkbd, "text-activated",
+                          G_CALLBACK (ibus_m17n_virtkbd_text_activated),
+                          m17n);
+        g_signal_connect (m17n->virtkbd, "notify::visible",
+                          G_CALLBACK (ibus_m17n_extension_notify_visible),
+                          m17n);
+    }
+#endif  /* HAVE_IBUS_VIRTKBD */
+
     return (GObject *) m17n;
 }
 
 static void
 ibus_m17n_engine_destroy (IBusM17NEngine *m17n)
 {
+    gint i;
+
     if (m17n->prop_list) {
         g_object_unref (m17n->prop_list);
         m17n->prop_list = NULL;
     }
 
-    if (m17n->status_prop) {
-        g_object_unref (m17n->status_prop);
-        m17n->status_prop = NULL;
+    for (i = 0; i < PROP_LAST; i++) {
+        g_object_unref (m17n->props[i]);
+        m17n->props[i] = NULL;
     }
-
-#if HAVE_SETUP
-    if (m17n->setup_prop) {
-        g_object_unref (m17n->setup_prop);
-        m17n->setup_prop = NULL;
-    }
-#endif  /* HAVE_SETUP */
 
     if (m17n->table) {
         g_object_unref (m17n->table);
@@ -471,6 +638,16 @@ ibus_m17n_engine_destroy (IBusM17NEngine *m17n)
     if (m17n->context) {
         minput_destroy_ic (m17n->context);
         m17n->context = NULL;
+    }
+
+    if (m17n->virtkbd) {
+        g_object_unref (m17n->virtkbd);
+        m17n->virtkbd = NULL;
+    }
+
+    if (m17n->charmap) {
+        g_object_unref (m17n->charmap);
+        m17n->charmap = NULL;
     }
 
     IBUS_OBJECT_CLASS (parent_class)->destroy ((IBusObject *)m17n);
@@ -502,10 +679,23 @@ ibus_m17n_engine_update_preedit (IBusM17NEngine *m17n)
 }
 
 static void
+ibus_m17n_engine_select_string (IBusM17NEngine *m17n,
+                                const gchar    *string)
+{
+    if (m17n->charmap) {
+        gunichar uc = g_utf8_get_char_validated (string, -1);
+        if (uc != (gunichar)-1 && uc != (gunichar)-2) {
+            ibus_charmap_select_character (IBUS_CHARMAP (m17n->charmap), uc);
+        }
+    }
+}
+
+static void
 ibus_m17n_engine_commit_string (IBusM17NEngine *m17n,
                                 const gchar    *string)
 {
     IBusText *text;
+    ibus_m17n_engine_select_string (m17n, string);
     text = ibus_text_new_from_static_string (string);
     ibus_engine_commit_text ((IBusEngine *)m17n, text);
     ibus_m17n_engine_update_preedit (m17n);
@@ -666,8 +856,31 @@ static void
 ibus_m17n_engine_focus_in (IBusEngine *engine)
 {
     IBusM17NEngine *m17n = (IBusM17NEngine *) engine;
+    IBusProperty *prop;
 
     ibus_engine_register_properties (engine, m17n->prop_list);
+
+#ifdef HAVE_IBUS_PANEL_EXTENSIONS
+    if (m17n->extension == NULL) {
+        prop = m17n->props[PROP_EXTENSION_NONE];
+    }
+#ifdef HAVE_IBUS_CHARMAP
+    else if (m17n->extension == m17n->charmap) {
+        prop = m17n->props[PROP_EXTENSION_CHARMAP];
+    }
+#endif  /* HAVE_IBUS_CHARMAP */
+#ifdef HAVE_IBUS_VIRTKBD
+    else if (m17n->extension == m17n->virtkbd) {
+        prop = m17n->props[PROP_EXTENSION_VIRTKBD];
+    }
+#endif  /* HAVE_IBUS_VIRTKBD */
+    else {
+        g_assert_not_reached ();
+    }
+    ibus_property_set_state (prop, PROP_STATE_CHECKED);
+    ibus_engine_update_property (engine, prop);
+#endif  /* HAVE_IBUS_PANEL_EXTENSIONS */
+
     ibus_m17n_engine_process_key (m17n, Minput_focus_in);
 
     parent_class->focus_in (engine);
@@ -705,6 +918,17 @@ ibus_m17n_engine_enable (IBusEngine *engine)
        input context that we will use surrounding-text. */
     ibus_engine_get_surrounding_text (engine, NULL, NULL, NULL);
 #endif  /* HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT */
+
+#ifdef HAVE_IBUS_PANEL_EXTENSIONS
+    if (m17n->extension) {
+        ibus_panel_extension_set_cursor_location (m17n->extension,
+                                                  m17n->x,
+                                                  m17n->y,
+                                                  m17n->w,
+                                                  m17n->h);
+        ibus_panel_extension_show (m17n->extension);
+    }
+#endif  /* HAVE_IBUS_PANEL_EXTENSIONS */
 }
 
 static void
@@ -712,8 +936,31 @@ ibus_m17n_engine_disable (IBusEngine *engine)
 {
     IBusM17NEngine *m17n = (IBusM17NEngine *) engine;
 
+#ifdef HAVE_IBUS_PANEL_EXTENSIONS
+    if (m17n->extension) {
+        ibus_panel_extension_hide (m17n->extension);
+    }
+#endif  /* HAVE_IBUS_PANEL_EXTENSIONS */
+
     ibus_m17n_engine_focus_out (engine);
     parent_class->disable (engine);
+}
+
+static void
+ibus_m17n_engine_set_cursor_location (IBusEngine *engine,
+                                      gint        x,
+                                      gint        y,
+                                      gint        w,
+                                      gint        h)
+{
+    IBusM17NEngine *m17n = (IBusM17NEngine *) engine;
+
+    parent_class->set_cursor_location (engine, x, y, w, h);
+
+    m17n->x = x;
+    m17n->y = y;
+    m17n->w = w;
+    m17n->h = h;
 }
 
 static void
@@ -756,6 +1003,51 @@ ibus_m17n_engine_cursor_down (IBusEngine *engine)
 }
 
 static void
+ibus_m17n_extension_notify_visible (GObject        *object,
+                                    GParamSpec     *pspec,
+                                    IBusM17NEngine *m17n)
+{
+#ifdef HAVE_IBUS_PANEL_EXTENSIONS
+    if (object == m17n->extension &&
+        !ibus_panel_extension_get_visible (m17n->extension)) {
+        IBusProperty *prop = m17n->props[PROP_EXTENSION_NONE];
+
+        ibus_property_set_state (prop, PROP_STATE_CHECKED);
+        ibus_engine_update_property (IBUS_ENGINE (m17n), prop);
+
+        m17n->extension = NULL;
+    }
+#endif  /* HAVE_IBUS_CHARMAP */
+}
+
+#ifdef HAVE_IBUS_CHARMAP
+static void
+ibus_m17n_charmap_character_activated (IBusCharmap *charmap,
+                                       gunichar uc,
+                                       IBusM17NEngine *m17n)
+{
+    gint len;
+    gchar *string;
+
+    len = g_unichar_to_utf8 (uc, NULL);
+    string = g_malloc0 (len + 1);
+    g_unichar_to_utf8 (uc, string);
+    ibus_m17n_engine_commit_string (m17n, string);
+    g_free (string);
+}
+#endif  /* HAVE_IBUS_CHARMAP */
+
+#ifdef HAVE_IBUS_VIRTKBD
+static void
+ibus_m17n_virtkbd_text_activated (IBusVirtkbd *virtkbd,
+                                  const gchar *text,
+                                  IBusM17NEngine *m17n)
+{
+    ibus_m17n_engine_commit_string (m17n, text);
+}
+#endif  /* HAVE_IBUS_VIRTKBD */
+
+static void
 ibus_m17n_engine_property_activate (IBusEngine  *engine,
                                     const gchar *prop_name,
                                     guint        prop_state)
@@ -775,6 +1067,52 @@ ibus_m17n_engine_property_activate (IBusEngine  *engine,
         g_free (setup);
     }
 #endif  /* HAVE_SETUP */
+
+#ifdef HAVE_IBUS_PANEL_EXTENSIONS
+    if (g_str_has_prefix (prop_name, "extension-") &&
+        prop_state == PROP_STATE_CHECKED) {
+        IBusPanelExtension *extension = NULL;
+        IBusProperty *prop = NULL;
+
+        if (g_strcmp0 (prop_name, "extension-none") == 0) {
+            extension = NULL;
+            prop = m17n->props[PROP_EXTENSION_NONE];
+        }
+#ifdef HAVE_IBUS_CHARMAP
+        else if (g_strcmp0 (prop_name, "extension-charmap") == 0) {
+            if (m17n->charmap && m17n->extension != m17n->charmap) {
+                extension = m17n->charmap;
+                prop = m17n->props[PROP_EXTENSION_CHARMAP];
+            }
+        }
+#endif  /* HAVE_IBUS_CHARMAP */
+#ifdef HAVE_IBUS_VIRTKBD
+        else if (g_strcmp0 (prop_name, "extension-virtkbd") == 0) {
+            if (m17n->virtkbd && m17n->extension != m17n->virtkbd) {
+                extension = m17n->virtkbd;
+                prop = m17n->props[PROP_EXTENSION_VIRTKBD];
+            }
+        }
+#endif  /*  HAVE_IBUS_VIRTKBD */
+        else {
+            g_assert_not_reached ();
+        }
+
+        IBusPanelExtension *prev_extension = m17n->extension;
+        m17n->extension = extension;
+        if (prev_extension) {
+            ibus_panel_extension_hide (prev_extension);
+        }
+        if (m17n->extension) {
+            ibus_panel_extension_set_cursor_location (m17n->extension,
+                                                      m17n->x,
+                                                      m17n->y,
+                                                      m17n->w,
+                                                      m17n->h);
+            ibus_panel_extension_show (m17n->extension);
+        }
+    }
+#endif  /* HAVE_IBUS_PANEL_EXTENSIONS */
 
     parent_class->property_activate (engine, prop_name, prop_state);
 }
@@ -884,19 +1222,21 @@ ibus_m17n_engine_callback (MInputContext *context,
     else if (command == Minput_status_draw) {
         gchar *status;
         status = ibus_m17n_mtext_to_utf8 (m17n->context->status);
+        IBusM17NEngineClass *klass = (IBusM17NEngineClass *) G_OBJECT_GET_CLASS (m17n);
+        IBusProperty *prop = m17n->props[PROP_STATUS];
 
         if (status && strlen (status)) {
             IBusText *text;
             text = ibus_text_new_from_string (status);
-            ibus_property_set_label (m17n->status_prop, text);
-            ibus_property_set_visible (m17n->status_prop, TRUE);
+            ibus_property_set_label (prop, text);
+            ibus_property_set_visible (prop, TRUE);
         }
         else {
-            ibus_property_set_label (m17n->status_prop, NULL);
-            ibus_property_set_visible (m17n->status_prop, FALSE);
+            ibus_property_set_label (prop, NULL);
+            ibus_property_set_visible (prop, FALSE);
         }
 
-        ibus_engine_update_property ((IBusEngine *)m17n, m17n->status_prop);
+        ibus_engine_update_property ((IBusEngine *)m17n, prop);
         g_free (status);
     }
     else if (command == Minput_status_done) {
