@@ -114,6 +114,7 @@ ibus_m17n_engine_new (MSymbol  lang,
     gchar *engine_title;
     gchar *engine_icon;
     gchar *engine_desc;
+    gchar *engine_setup;
 
     engine_name = g_strdup_printf ("m17n:%s:%s", msymbol_name (lang), msymbol_name (name));
 
@@ -121,6 +122,8 @@ ibus_m17n_engine_new (MSymbol  lang,
     engine_title = ibus_m17n_mtext_to_utf8 (title);
     engine_icon = ibus_m17n_mtext_to_utf8 (icon);
     engine_desc = ibus_m17n_mtext_to_utf8 (desc);
+    engine_setup = g_strdup_printf ("%s/ibus-setup-m17n --name %s",
+                                    LIBEXECDIR, engine_name);
 
 #if IBUS_CHECK_VERSION(1,3,99)
     engine = ibus_engine_desc_new_varargs ("name",        engine_name,
@@ -131,6 +134,7 @@ ibus_m17n_engine_new (MSymbol  lang,
                                            "icon",        engine_icon ? engine_icon : "",
                                            "layout",      "us",
                                            "rank",        config->rank,
+                                           "setup",       engine_setup,
                                            NULL);
 #else
     engine = ibus_engine_desc_new (engine_name,
@@ -149,6 +153,7 @@ ibus_m17n_engine_new (MSymbol  lang,
     g_free (engine_title);
     g_free (engine_icon);
     g_free (engine_desc);
+    g_free (engine_setup);
 
     return engine;
 }
