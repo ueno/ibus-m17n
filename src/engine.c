@@ -821,7 +821,7 @@ ibus_m17n_engine_update_lookup_table (IBusM17NEngine *m17n)
             for (i = 0; buf != NULL && i < nchars; i++) {
                 IBusText *text = ibus_text_new_from_unichar (buf[i]);
                 if (text == NULL) {
-                    text = ibus_text_new_from_printf ("INVCODE=U+08X%", buf[i]);
+                    text = ibus_text_new_from_printf ("INVCODE=U+%04"G_GINT32_FORMAT"X", buf[i]);
                     g_warn_if_reached ();
                 }
                 ibus_lookup_table_append_candidate (m17n->table, text);
