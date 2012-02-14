@@ -52,7 +52,7 @@ AM_PROG_LIBTOOL
 
 # check ibus
 PKG_CHECK_MODULES(IBUS, [
-    ibus-1.0 >= 1.3
+    ibus-1.0 >= 1.4
 ])
 
 # check m17n
@@ -94,15 +94,6 @@ save_LIBS="$LIBS"
 CFLAGS="$CFLAGS $M17N_CFLAGS"
 LIBS="$LIBS $M17N_LIBS"
 AC_REPLACE_FUNCS([minput_list])
-CFLAGS="$save_CFLAGS"
-LIBS="$save_LIBS"
-
-# check if ibus_engine_get_surrounding_text, which is available in ibus-1.3.99+ (git master)
-save_CFLAGS="$CFLAGS"
-save_LIBS="$LIBS"
-CFLAGS="$CFLAGS $IBUS_CFLAGS"
-LIBS="$LIBS $IBUS_LIBS"
-AC_CHECK_FUNCS([ibus_engine_get_surrounding_text])
 CFLAGS="$save_CFLAGS"
 LIBS="$save_LIBS"
 

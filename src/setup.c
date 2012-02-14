@@ -234,97 +234,107 @@ _gdk_color_from_uint (guint     color,
 }
 
 static void
+load_color (GVariant        *values,
+            GtkToggleButton *togglebutton,
+            GtkColorButton  *colorbutton,
+            const gchar     *name,
+            GdkColor        *defval)
+{
+    GVariant *value;
+    gboolean bvalue;
+    GdkColor cvalue;
+
+    memcpy (&cvalue, defval, sizeof (GdkColor));
+
+    bvalue = FALSE;
+    value = g_variant_lookup_value (values, name, G_VARIANT_TYPE_STRING);
+    if (value != NULL) {
+        const gchar *color = g_variant_get_string (value, NULL);
+        if (g_strcmp0 (color, "none") != 0 &&
+            gdk_color_parse (color, &cvalue))
+            bvalue = TRUE;
+        g_variant_unref (value);
+    }
+
+    gtk_toggle_button_set_active (togglebutton, bvalue);
+    gtk_widget_set_sensitive (GTK_WIDGET (colorbutton), bvalue);
+    gtk_color_button_set_color (GTK_COLOR_BUTTON (colorbutton), &cvalue);
+}
+
+static void
+load_choice (GVariant    *values,
+             GtkComboBox *combo,
+             const gchar *name,
+             gint         defval)
+{
+    GVariant *value;
+    gint ivalue, index;
+    GtkCellRenderer *renderer;
+
+    renderer = gtk_cell_renderer_text_new ();
+    gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (combo), renderer, TRUE);
+    gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT (combo),
+                                    renderer, "text", 0, NULL);
+
+    ivalue = defval;
+    value = g_variant_lookup_value (values, name, G_VARIANT_TYPE_INT32);
+    if (value != NULL) {
+        ivalue = g_variant_get_int32 (value);
+        g_variant_unref (value);
+    }
+    
+    index = get_combo_box_index_by_value (GTK_COMBO_BOX (combo), ivalue);
+    gtk_combo_box_set_active (GTK_COMBO_BOX (combo), index);
+}
+
+static void
 setup_dialog_load_config (SetupDialog *dialog)
 {
-    gchar *color;
-    gboolean bvalue;
-    gint ivalue;
-    GdkColor cvalue;
+    GVariant *values;
+    GdkColor defcol;
     GtkCellRenderer *renderer;
-    gint index;
+
+    values = ibus_config_get_values (dialog->config, dialog->section);
+    /* ibus_config_get_values may return NULL on failure */
+    if (values == NULL) {
+        GVariantType *child_type = g_variant_type_new ("{sv}");
+        values = g_variant_new_array (child_type, NULL, 0);
+        g_variant_type_free (child_type);
+    }
 
     /* General -> Pre-edit Appearance */
     /* foreground color of pre-edit buffer */
-    bvalue = FALSE;
-    _gdk_color_from_uint (PREEDIT_FOREGROUND, &cvalue);
-    if (ibus_m17n_config_get_string (dialog->config,
-                                     dialog->section,
-                                     "preedit_foreground",
-                                     &color)) {
-        if (g_strcmp0 (color, "none") != 0 && gdk_color_parse (color, &cvalue))
-            bvalue = TRUE;
-        g_free (color);
-    }
-
-    gtk_toggle_button_set_active
-        (GTK_TOGGLE_BUTTON (dialog->checkbutton_foreground),
-         bvalue);
+    _gdk_color_from_uint (PREEDIT_FOREGROUND, &defcol);
+    load_color (values,
+                GTK_TOGGLE_BUTTON (dialog->checkbutton_foreground),
+                GTK_COLOR_BUTTON (dialog->colorbutton_foreground),
+                "preedit_foreground",
+                &defcol);
     g_signal_connect (dialog->checkbutton_foreground, "toggled",
                       G_CALLBACK (on_foreground_toggled), dialog);
-    gtk_widget_set_sensitive (dialog->colorbutton_foreground, bvalue);
-    gtk_color_button_set_color
-        (GTK_COLOR_BUTTON (dialog->colorbutton_foreground),
-         &cvalue);
 
     /* background color of pre-edit buffer */
-    bvalue = FALSE;
-    _gdk_color_from_uint (PREEDIT_BACKGROUND, &cvalue);
-    if (ibus_m17n_config_get_string (dialog->config,
-                                     dialog->section,
-                                     "preedit_background",
-                                     &color)) {
-        if (g_strcmp0 (color, "none") != 0 && gdk_color_parse (color, &cvalue))
-            bvalue = TRUE;
-        g_free (color);
-    }
-    gtk_toggle_button_set_active
-        (GTK_TOGGLE_BUTTON (dialog->checkbutton_background),
-         bvalue);
+    _gdk_color_from_uint (PREEDIT_BACKGROUND, &defcol);
+    load_color (values,
+                GTK_TOGGLE_BUTTON (dialog->checkbutton_background),
+                GTK_COLOR_BUTTON (dialog->colorbutton_background),
+                "preedit_background",
+                &defcol);
     g_signal_connect (dialog->checkbutton_background, "toggled",
                       G_CALLBACK (on_background_toggled), dialog);
-    gtk_widget_set_sensitive (dialog->colorbutton_background, bvalue);
-    gtk_color_button_set_color
-        (GTK_COLOR_BUTTON (dialog->colorbutton_background),
-         &cvalue);
 
     /* underline of pre-edit buffer */
-    renderer = gtk_cell_renderer_text_new ();
-    gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (dialog->combobox_underline),
-                                renderer, TRUE);
-    gtk_cell_layout_set_attributes
-        (GTK_CELL_LAYOUT (dialog->combobox_underline),
-         renderer, "text", 0, NULL);
-    if (!ibus_m17n_config_get_int (dialog->config,
-                                   dialog->section,
-                                   "preedit_underline",
-                                   &ivalue))
-        ivalue = IBUS_ATTR_UNDERLINE_NONE;
-
-    index = get_combo_box_index_by_value
-        (GTK_COMBO_BOX (dialog->combobox_underline),
-         ivalue);
-    gtk_combo_box_set_active (GTK_COMBO_BOX (dialog->combobox_underline),
-                              index);
+    load_choice (values,
+                 GTK_COMBO_BOX (dialog->combobox_underline),
+                 "preedit_underline",
+                 IBUS_ATTR_UNDERLINE_NONE);
 
     /* General -> Other */
     /* lookup table orientation */
-    renderer = gtk_cell_renderer_text_new ();
-    gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (dialog->combobox_orientation),
-                                renderer, TRUE);
-    gtk_cell_layout_set_attributes
-        (GTK_CELL_LAYOUT (dialog->combobox_orientation),
-         renderer, "text", 0, NULL);
-    if (!ibus_m17n_config_get_int (dialog->config,
-                                   dialog->section,
-                                   "lookup_table_orientation",
-                                   &ivalue))
-        ivalue = IBUS_ORIENTATION_SYSTEM;
-
-    index = get_combo_box_index_by_value
-        (GTK_COMBO_BOX (dialog->combobox_orientation),
-         ivalue);
-    gtk_combo_box_set_active (GTK_COMBO_BOX (dialog->combobox_orientation),
-                              index);
+    load_choice (values,
+                 GTK_COMBO_BOX (dialog->combobox_orientation),
+                 "lookup_table_orientation",
+                 IBUS_ORIENTATION_SYSTEM);
 
     /* Advanced -> m17n-lib configuration */
     dialog->store = gtk_list_store_new (NUM_COLS,
@@ -355,6 +365,8 @@ setup_dialog_load_config (SetupDialog *dialog)
 
     g_signal_connect (dialog->treeview, "query-tooltip",
                       G_CALLBACK (on_query_tooltip), NULL);
+
+    g_variant_unref (values);
 }
 
 static gchar *
@@ -372,23 +384,20 @@ save_color (SetupDialog     *dialog,
             GtkColorButton  *colorbutton,
             const gchar     *name)
 {
+    GVariant *value;
+
     if (gtk_toggle_button_get_active (togglebutton)) {
         GdkColor color;
-        gchar *svalue;
 
         gtk_color_button_get_color (colorbutton, &color);
-        svalue = _gdk_color_to_string (&color);
-        ibus_m17n_config_set_string (dialog->config,
-                                     dialog->section,
-                                     name,
-                                     svalue);
-        g_free (svalue);
+        value = g_variant_new_string (_gdk_color_to_string (&color));
     } else {
-        ibus_m17n_config_set_string (dialog->config,
-                                     dialog->section,
-                                     name,
-                                     "none");
+        value = g_variant_new_string ("none");
     }
+    ibus_config_set_value (dialog->config,
+                           dialog->section,
+                           name,
+                           value);
 }
 
 static void
@@ -399,12 +408,14 @@ save_choice (SetupDialog *dialog,
     GtkTreeModel *model;
     GtkTreeIter iter;
     gint active;
+    GVariant *value;
 
     model = gtk_combo_box_get_model (combo);
     gtk_combo_box_get_active_iter (combo, &iter);
     gtk_tree_model_get (model, &iter, COLUMN_VALUE, &active, -1);
 
-    ibus_m17n_config_set_int (dialog->config, dialog->section, name, active);
+    value = g_variant_new_int32 (active);
+    ibus_config_set_value (dialog->config, dialog->section, name, value);
 }
 
 static gboolean
