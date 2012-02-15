@@ -15,7 +15,8 @@ static MConverter *utf8_converter = NULL;
 
 typedef enum {
     ENGINE_CONFIG_RANK_MASK = 1 << 0,
-    ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK = 1 << 1
+    ENGINE_CONFIG_SYMBOL_MASK = 1 << 1,
+    ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK = 1 << 2
 } EngineConfigMask;
 
 struct _EngineConfigNode {
@@ -125,7 +126,6 @@ ibus_m17n_engine_new (MSymbol  lang,
     engine_setup = g_strdup_printf ("%s/ibus-setup-m17n --name %s",
                                     LIBEXECDIR, engine_name);
 
-#if IBUS_CHECK_VERSION(1,3,99)
     engine = ibus_engine_desc_new_varargs ("name",        engine_name,
                                            "longname",    engine_longname,
                                            "description", engine_desc ? engine_desc : "",
@@ -134,19 +134,9 @@ ibus_m17n_engine_new (MSymbol  lang,
                                            "icon",        engine_icon ? engine_icon : "",
                                            "layout",      "us",
                                            "rank",        config->rank,
+                                           "symbol",      config->symbol ? config->symbol : "",
                                            "setup",       engine_setup,
                                            NULL);
-#else
-    engine = ibus_engine_desc_new (engine_name,
-                                   engine_longname,
-                                   engine_desc ? engine_desc : "",
-                                   msymbol_name (lang),
-                                   "GPL",
-                                   "",
-                                   engine_icon ? engine_icon : "",
-                                   "us");
-    engine->rank = config->rank;
-#endif  /* !IBUS_CHECK_VERSION(1,3,99) */
 
     g_free (engine_name);
     g_free (engine_longname);
@@ -276,6 +266,8 @@ ibus_m17n_get_engine_config (const gchar *engine_name)
         if (g_pattern_match_simple (cnode->name, engine_name)) {
             if (cnode->mask & ENGINE_CONFIG_RANK_MASK)
                 config->rank = cnode->config.rank;
+            if (cnode->mask & ENGINE_CONFIG_SYMBOL_MASK)
+                config->symbol = cnode->config.symbol;
             if (cnode->mask & ENGINE_CONFIG_PREEDIT_HIGHLIGHT_MASK)
                 config->preedit_highlight = cnode->config.preedit_highlight;
         }
@@ -306,6 +298,11 @@ ibus_m17n_engine_config_parse_xml_node (EngineConfigNode *cnode,
         if (g_strcmp0 (sub_node->name , "rank") == 0) {
             cnode->config.rank = atoi (sub_node->text);
             cnode->mask |= ENGINE_CONFIG_RANK_MASK;
+            continue;
+        }
+        if (g_strcmp0 (sub_node->name , "symbol") == 0) {
+            cnode->config.symbol = g_strdup (sub_node->text);
+            cnode->mask |= ENGINE_CONFIG_SYMBOL_MASK;
             continue;
         }
         if (g_strcmp0 (sub_node->name , "preedit-highlight") == 0) {
