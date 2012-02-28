@@ -25,6 +25,7 @@ struct _SetupDialog {
     GtkWidget *colorbutton_foreground;
     GtkWidget *checkbutton_background;
     GtkWidget *colorbutton_background;
+    GtkWidget *combobox_focus_out_behavior;
     GtkWidget *treeview;
     GtkListStore *store;
 
@@ -336,6 +337,12 @@ setup_dialog_load_config (SetupDialog *dialog)
                  "lookup_table_orientation",
                  IBUS_ORIENTATION_SYSTEM);
 
+    /* behavior on focus out */
+    load_choice (values,
+                 GTK_COMBO_BOX (dialog->combobox_focus_out_behavior),
+                 "focus_out_behavior",
+                 IBUS_ENGINE_PREEDIT_COMMIT);
+
     /* Advanced -> m17n-lib configuration */
     dialog->store = gtk_list_store_new (NUM_COLS,
                                         G_TYPE_STRING,
@@ -499,6 +506,9 @@ setup_dialog_save_config (SetupDialog *dialog)
     save_choice (dialog,
                  GTK_COMBO_BOX (dialog->combobox_orientation),
                  "lookup_table_orientation");
+    save_choice (dialog,
+                 GTK_COMBO_BOX (dialog->combobox_focus_out_behavior),
+                 "focus_out_behavior");
     save_m17n_options (dialog);
 }
 
@@ -545,6 +555,8 @@ setup_dialog_new (IBusConfig *config,
     dialog->combobox_underline = GTK_WIDGET (object);
     object = gtk_builder_get_object (builder, "combobox_orientation");
     dialog->combobox_orientation = GTK_WIDGET (object);
+    object = gtk_builder_get_object (builder, "combobox_focus_out_behavior");
+    dialog->combobox_focus_out_behavior = GTK_WIDGET (object);
     object = gtk_builder_get_object (builder, "treeview_mim_config");
     dialog->treeview = GTK_WIDGET (object);
 

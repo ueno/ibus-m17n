@@ -34,6 +34,7 @@ struct _IBusM17NEngineClass {
     guint preedit_background;
     gint preedit_underline;
     gint lookup_table_orientation;
+    gint focus_out_behavior;
 
     MInputMethod *im;
 };
@@ -259,6 +260,7 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
         INVALID_COLOR;
     klass->preedit_underline = IBUS_ATTR_UNDERLINE_NONE;
     klass->lookup_table_orientation = IBUS_ORIENTATION_SYSTEM;
+    klass->focus_out_behavior = IBUS_ENGINE_PREEDIT_COMMIT;
 
     ibus_m17n_engine_config_free (engine_config);
 
@@ -493,10 +495,11 @@ ibus_m17n_engine_update_preedit (IBusM17NEngine *m17n)
                                         klass->preedit_background, 0, -1);
         ibus_text_append_attribute (text, IBUS_ATTR_TYPE_UNDERLINE,
                                     klass->preedit_underline, 0, -1);
-        ibus_engine_update_preedit_text ((IBusEngine *) m17n,
-                                         text,
-                                         m17n->context->cursor_pos,
-                                         mtext_len (m17n->context->preedit) > 0);
+        ibus_engine_update_preedit_text_with_mode ((IBusEngine *) m17n,
+                                                   text,
+                                                   m17n->context->cursor_pos,
+                                                   mtext_len (m17n->context->preedit) > 0,
+                                                   klass->focus_out_behavior);
     }
 }
 
