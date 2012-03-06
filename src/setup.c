@@ -527,6 +527,8 @@ setup_dialog_new (IBusConfig *config,
     if (gtk_builder_add_from_file (builder,
                                    SETUPDIR "/ibus-m17n-preferences.ui",
                                    &error) == 0) {
+        g_warning ("can't read ibus-m17n-preferences.ui: %s",
+                   error->message);
         g_error_free (error);
         g_return_val_if_reached (NULL);
     }

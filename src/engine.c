@@ -273,8 +273,8 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
         if (value != NULL) {
             const gchar *hex = g_variant_get_string (value, NULL);
             klass->preedit_foreground = ibus_m17n_parse_color (hex);
+            g_variant_unref (value);
         }
-        g_variant_unref (value);
 
         value = g_variant_lookup_value (values,
                                         "preedit_background",
@@ -282,24 +282,24 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
         if (value != NULL) {
             const gchar *hex = g_variant_get_string (value, NULL);
             klass->preedit_background = ibus_m17n_parse_color (hex);
+            g_variant_unref (value);
         }
-        g_variant_unref (value);
 
         value = g_variant_lookup_value (values,
                                         "preedit_underline",
                                         G_VARIANT_TYPE_INT32);
         if (value != NULL) {
             klass->preedit_background = g_variant_get_int32 (value);
+            g_variant_unref (value);
         }
-        g_variant_unref (value);
 
         value = g_variant_lookup_value (values,
                                         "lookup_table_orientation",
                                         G_VARIANT_TYPE_INT32);
         if (value != NULL) {
             klass->lookup_table_orientation = g_variant_get_int32 (value);
+            g_variant_unref (value);
         }
-        g_variant_unref (value);
         g_variant_unref (values);
     }
 
@@ -525,7 +525,7 @@ ibus_m17n_engine_commit_string (IBusM17NEngine *m17n,
                 
    Since IBus engines are supposed to be cross-platform, the code
    should go into IBus core, instead of ibus-m17n. */
-MSymbol
+static MSymbol
 ibus_m17n_key_event_to_symbol (guint keycode,
                                guint keyval,
                                guint modifiers)
@@ -699,11 +699,9 @@ ibus_m17n_engine_enable (IBusEngine *engine)
 
     parent_class->enable (engine);
 
-#ifdef HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT
     /* Issue a dummy ibus_engine_get_surrounding_text() call to tell
        input context that we will use surrounding-text. */
     ibus_engine_get_surrounding_text (engine, NULL, NULL, NULL);
-#endif  /* HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT */
 }
 
 static void
@@ -930,9 +928,6 @@ ibus_m17n_engine_callback (MInputContext *context,
     }
     else if (command == Minput_reset) {
     }
-    /* ibus_engine_get_surrounding_text is only available in the current
-       git master (1.3.99+) */
-#ifdef HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT
     else if (command == Minput_get_surrounding_text &&
              (((IBusEngine *) m17n)->client_capabilities &
               IBUS_CAP_SURROUNDING_TEXT) != 0) {
@@ -970,7 +965,6 @@ ibus_m17n_engine_callback (MInputContext *context,
         mplist_set (m17n->context->plist, Mtext, surround);
         m17n_object_unref (surround);
     }
-#endif  /* !HAVE_IBUS_ENGINE_GET_SURROUNDING_TEXT */
     else if (command == Minput_delete_surrounding_text &&
              (((IBusEngine *) m17n)->client_capabilities &
               IBUS_CAP_SURROUNDING_TEXT) != 0) {

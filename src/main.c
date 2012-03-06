@@ -115,12 +115,13 @@ main (gint argc, gchar **argv)
 
     if (!g_option_context_parse (context, &argc, &argv, &error)) {
         g_print ("Option parsing failed: %s\n", error->message);
-        exit (-1);
+        g_error_free (error);
+        exit (EXIT_FAILURE);
     }
 
     if (xml) {
         print_engines_xml ();
-        exit (0);
+        exit (EXIT_SUCCESS);
     }
 
     start_component ();

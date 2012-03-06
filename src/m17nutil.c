@@ -188,8 +188,10 @@ ibus_m17n_list_engines (void)
                 continue;
             }
             if (config->rank < 0) {
-                g_warning ("skipped %s since its rank is lower than 0",
-                           engine_name);
+                g_log ("ibus-m17n",
+                       G_LOG_LEVEL_MESSAGE,
+                       "skipped %s since its rank is lower than 0",
+                       engine_name);
                 g_free (engine_name);
                 continue;
             }

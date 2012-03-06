@@ -1,6 +1,6 @@
 # vim:set noet ts=4:
 #
-# ibus-anthy - The Anthy engine for IBus
+# ibus-m17n - The m17n engine for IBus
 #
 # Copyright (c) 2007-2008 Huang Peng <shawn.p.huang@gmail.com>
 #
@@ -52,13 +52,13 @@ test_m17n_LDADD = \
 
 libexec_PROGRAMS = ibus-engine-m17n
 
-noinst_LIBRARIES = libm17ncommon.a
+noinst_LTLIBRARIES = libm17ncommon.la
 
-libm17ncommon_a_SOURCES = \
+libm17ncommon_la_SOURCES = \
 	m17nutil.c \
 	m17nutil.h \
 	$(NULL)
-libm17ncommon_a_LIBADD = $(LIBOBJS)
+libm17ncommon_la_LIBADD = $(LTLIBOBJS)
 
 ibus_engine_m17n_SOURCES = \
 	main.c \
@@ -66,7 +66,7 @@ ibus_engine_m17n_SOURCES = \
 	engine.h \
 	$(NULL)
 ibus_engine_m17n_LDADD = \
-	libm17ncommon.a \
+	libm17ncommon.la \
 	@IBUS_LIBS@ \
 	@M17N_LIBS@ \
 	$(NULL)
@@ -82,7 +82,7 @@ ibus_setup_m17n_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(NULL)
 ibus_setup_m17n_LDADD = \
-	libm17ncommon.a \
+	libm17ncommon.la \
 	@IBUS_LIBS@ \
 	@M17N_LIBS@ \
 	@GTK_LIBS@ \
