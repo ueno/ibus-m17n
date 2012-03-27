@@ -567,12 +567,13 @@ ibus_m17n_key_event_to_symbol (guint keycode,
         g_string_append_c (keysym, c);
     }
     else {
-        mask |= modifiers & (IBUS_CONTROL_MASK | IBUS_SHIFT_MASK);
-        g_string_append (keysym, ibus_keyval_name (keyval));
-        if (keysym->len == 0) {
+        const gchar *name = ibus_keyval_name (keyval);
+        if (name == NULL) {
             g_string_free (keysym, TRUE);
             return Mnil;
         }
+        mask |= modifiers & (IBUS_CONTROL_MASK | IBUS_SHIFT_MASK);
+        g_string_append (keysym, name);
     }
 
     mask |= modifiers & (IBUS_MOD1_MASK |
