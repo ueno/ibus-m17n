@@ -17,6 +17,9 @@ struct _IBusM17NEngineConfig {
     /* symbol */
     gchar *symbol;
 
+    /* overridding longname shown on panel */
+    gchar *longname;
+
     /* whether to highlight preedit */
     gboolean preedit_highlight;
 };

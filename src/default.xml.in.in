@@ -389,6 +389,11 @@
 		<symbol>倉</symbol>
 	</engine>
 	<engine>
+		<name>m17n:zh:pinyin</name>
+		<symbol>PY</symbol>
+		<longname>hanyu pinyin (m17n)</longname>
+	</engine>
+	<engine>
 		<name>m17n:zh:py*</name>
 		<symbol>拼</symbol>
 	</engine>
