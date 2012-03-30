@@ -65,10 +65,15 @@ ibus_engine_m17n_SOURCES = \
 	engine.c \
 	engine.h \
 	$(NULL)
+ibus_engine_m17n_CFLAGS = \
+	@EEKBOARD_CFLAGS@ \
+	$(AM_CFLAGS) \
+	$(NULL)
 ibus_engine_m17n_LDADD = \
 	libm17ncommon.la \
 	@IBUS_LIBS@ \
 	@M17N_LIBS@ \
+	@EEKBOARD_LIBS@ \
 	$(NULL)
 
 if HAVE_GTK

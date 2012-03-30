@@ -7,6 +7,9 @@
 #include <m17n.h>
 #include <string.h>
 #include "m17nutil.h"
+#ifdef HAVE_EEKBOARD
+#include <eekboard/eekboard-client.h>
+#endif  /* HAVE_EEKBOARD */
 #include "engine.h"
 
 typedef struct _IBusM17NEngine IBusM17NEngine;
@@ -18,10 +21,12 @@ struct _IBusM17NEngine {
     /* members */
     MInputContext *context;
     IBusLookupTable *table;
+
     IBusProperty    *status_prop;
 #ifdef HAVE_SETUP
     IBusProperty    *setup_prop;
 #endif  /* HAVE_SETUP */
+    IBusProperty    *virtkbd_prop;
     IBusPropList    *prop_list;
 };
 
@@ -34,9 +39,16 @@ struct _IBusM17NEngineClass {
     guint preedit_background;
     gint preedit_underline;
     gint lookup_table_orientation;
+    gchar *virtual_keyboard;
 
     gchar *title;
     MInputMethod *im;
+
+#ifdef HAVE_EEKBOARD
+    EekboardContext *econtext;
+    GSList *keyboards;
+    GSList *keyboards_head;
+#endif  /* HAVE_EEKBOARD */
 };
 
 /* functions prototype */
@@ -100,13 +112,184 @@ static IBusEngineClass *parent_class = NULL;
 
 static IBusConfig      *config = NULL;
 
+#ifdef HAVE_EEKBOARD
+static EekboardClient  *eekboard = NULL;
+
+static void
+client_destroyed_cb (EekboardClient *client,
+                     gpointer        user_data)
+{
+    if (eekboard) {
+        g_object_unref (eekboard);
+        eekboard = NULL;
+    }
+}
+
+static void
+context_destroyed_cb (EekboardContext *context,
+                      IBusM17NEngineClass *klass)
+{
+    if (klass->econtext) {
+        g_object_unref (klass->econtext);
+        klass->econtext = NULL;
+    }
+}
+
+static EekboardContext *
+create_context (IBusM17NEngineClass *klass)
+{
+    EekboardContext *context = eekboard_client_create_context (eekboard,
+                                                               "ibus-m17n",
+                                                               NULL);
+    g_signal_connect (context, "destroyed",
+                      G_CALLBACK (context_destroyed_cb), klass);
+
+    g_slist_free (klass->keyboards);
+    klass->keyboards = NULL;
+
+    gchar **keyboards = g_strsplit (klass->virtual_keyboard, ",", -1);
+    gchar **p;
+
+    for (p = keyboards; *p; p++) {
+        guint keyboard = eekboard_context_add_keyboard (context,
+                                                        g_strstrip (*p),
+                                                        NULL);
+        klass->keyboards = g_slist_prepend (klass->keyboards,
+                                            GUINT_TO_POINTER (keyboard));
+    }
+    g_strfreev (keyboards);
+
+    klass->keyboards = g_slist_reverse (klass->keyboards);
+    klass->keyboards_head = klass->keyboards;
+
+    eekboard_context_set_keyboard (context,
+                                   GPOINTER_TO_UINT (klass->keyboards_head->data),
+                                   NULL);
+    return context;
+}
+
+static void
+key_activated_cb (EekboardContext *context,
+                  guint            keycode,
+                  EekSymbol       *symbol,
+                  guint            modifiers,
+                  IBusM17NEngine  *m17n)
+{
+    IBusM17NEngineClass *klass = (IBusM17NEngineClass *) G_OBJECT_GET_CLASS (m17n);
+    IBusEngine *engine = IBUS_ENGINE (m17n);
+
+    if (EEK_IS_TEXT (symbol)) {
+        const gchar *string;
+        IBusText *text;
+
+        string = eek_text_get_text (EEK_TEXT (symbol));
+        text = ibus_text_new_from_static_string (string);
+        ibus_engine_commit_text (engine, text);
+    } else if (EEK_IS_KEYSYM (symbol)) {
+        guint keyval = eek_keysym_get_xkeysym (EEK_KEYSYM (symbol));
+        ibus_engine_forward_key_event (engine,
+                                       keyval,
+                                       0,
+                                       modifiers);
+        ibus_engine_forward_key_event (engine,
+                                       keyval,
+                                       0,
+                                       modifiers | IBUS_RELEASE_MASK);
+    } else if (g_strcmp0 (eek_symbol_get_name (symbol),
+                          "cycle-keyboard") == 0) {
+        klass->keyboards_head = g_slist_next (klass->keyboards_head);
+        if (klass->keyboards_head == NULL)
+            klass->keyboards_head = klass->keyboards;
+        eekboard_context_set_keyboard (klass->econtext,
+                                       GPOINTER_TO_UINT (klass->keyboards_head->data),
+                                       NULL);
+    }
+}
+
+static void
+init_eekboard ()
+{
+    GDBusConnection *connection;
+    GError *error;
+
+    error = NULL;
+    connection = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
+    if (connection == NULL) {
+        g_printerr ("Can't connect to the session bus: %s\n",
+                    error->message);
+        g_error_free (error);
+        return;
+    }
+
+    eek_init ();
+
+    eekboard = eekboard_client_new (connection, NULL);
+    g_object_unref (connection);
+
+    g_signal_connect (eekboard, "destroyed",
+                      G_CALLBACK (client_destroyed_cb), NULL);
+}
+#endif  /* HAVE_EEKBOARD */
+
+static GType ibus_m17n_virtual_keyboard_implementation_type = 0;
+
+typedef enum {
+    IBUS_M17N_VIRTUAL_KEYBOARD_IMPLEMENTATION_EEKBOARD,
+    IBUS_M17N_VIRTUAL_KEYBOARD_IMPLEMENTATION_IOK
+} IBusM17NVirtualKeyboardImplementation;
+
+#ifdef HAVE_EEKBOARD
+static IBusM17NVirtualKeyboardImplementation virtual_keyboard_implementation =
+    IBUS_M17N_VIRTUAL_KEYBOARD_IMPLEMENTATION_EEKBOARD;
+#else
+static IBusM17NVirtualKeyboardImplementation virtual_keyboard_implementation =
+    IBUS_M17N_VIRTUAL_KEYBOARD_IMPLEMENTATION_IOK;
+#endif
+
 void
 ibus_m17n_init (IBusBus *bus)
 {
+    static const GEnumValue evalues[] = {
+        { IBUS_M17N_VIRTUAL_KEYBOARD_IMPLEMENTATION_EEKBOARD,
+          "IBUS_M17N_VIRTUAL_KEYBOARD_IMPLEMENTATION_EEKBOARD",
+          "eekboard" },
+        { IBUS_M17N_VIRTUAL_KEYBOARD_IMPLEMENTATION_IOK,
+          "IBUS_M17N_VIRTUAL_KEYBOARD_IMPLEMENTATION_IOK",
+          "iok" }
+    };
+
+    GVariant *values;
+
     config = ibus_bus_get_config (bus);
     if (config)
         g_object_ref_sink (config);
     ibus_m17n_init_common ();
+
+    ibus_m17n_virtual_keyboard_implementation_type =
+        g_enum_register_static ("IBusM17NVirtualKeyboardImplementation",
+                                evalues);
+    values = ibus_config_get_values (config, "engine/M17N");
+    if (values != NULL) {
+        GVariant *value =
+            g_variant_lookup_value (values,
+                                    "virtual_keyboard_implementation",
+                                    G_VARIANT_TYPE_STRING);
+        if (value != NULL) {
+            GEnumClass *eclass = G_ENUM_CLASS (g_type_class_peek (ibus_m17n_virtual_keyboard_implementation_type));
+            GEnumValue *evalue = g_enum_get_value_by_nick (eclass, g_variant_get_string (value, NULL));
+            if (evalue != NULL) {
+                virtual_keyboard_implementation = evalue->value;
+            }
+        }
+    }
+
+    if (virtual_keyboard_implementation == IBUS_M17N_VIRTUAL_KEYBOARD_IMPLEMENTATION_EEKBOARD) {
+#ifdef HAVE_EEKBOARD
+        init_eekboard ();
+#else
+        g_warning ("eekboard is not supported");
+#endif  /* HAVE_EEKBOARD */
+    }
 }
 
 static gboolean
@@ -264,6 +447,7 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
         INVALID_COLOR;
     klass->preedit_underline = IBUS_ATTR_UNDERLINE_NONE;
     klass->lookup_table_orientation = IBUS_ORIENTATION_SYSTEM;
+    klass->virtual_keyboard = engine_config->virtual_keyboard;
 
     ibus_m17n_engine_config_free (engine_config);
 
@@ -313,6 +497,11 @@ ibus_m17n_engine_class_init (IBusM17NEngineClass *klass)
                       klass);
 
     klass->im = NULL;
+
+#if HAVE_EEKBOARD
+    if (eekboard)
+        klass->econtext = create_context (klass);
+#endif  /* HAVE_EEKBOARD */
 }
 
 static void
@@ -350,6 +539,7 @@ ibus_m17n_engine_init (IBusM17NEngine *m17n)
 {
     IBusText* label;
     IBusText* tooltip;
+    IBusM17NEngineClass *klass = (IBusM17NEngineClass *) G_OBJECT_GET_CLASS (m17n);
 
     m17n->prop_list = ibus_prop_list_new ();
     g_object_ref_sink (m17n->prop_list);
@@ -381,6 +571,36 @@ ibus_m17n_engine_init (IBusM17NEngine *m17n)
     g_object_ref_sink (m17n->setup_prop);
     ibus_prop_list_append (m17n->prop_list, m17n->setup_prop);
 #endif  /* HAVE_SETUP */
+
+    label = ibus_text_new_from_string ("Screen Keyboard");
+    tooltip = ibus_text_new_from_string ("Show screen keyboard");
+    m17n->virtkbd_prop = ibus_property_new ("virtual-keyboard",
+                                            PROP_TYPE_NORMAL,
+                                            label,
+                                            "input-keyboard",
+                                            tooltip,
+                                            TRUE,
+                                            FALSE,
+                                            PROP_STATE_UNCHECKED,
+                                            NULL);
+    g_object_ref_sink (m17n->virtkbd_prop);
+    ibus_prop_list_append (m17n->prop_list, m17n->virtkbd_prop);
+
+#ifdef HAVE_EEKBOARD
+    if (eekboard != NULL)
+        ibus_property_set_visible (m17n->virtkbd_prop, TRUE);
+    else
+#endif  /* HAVE_EEKBOARD */
+    {
+        gchar *lang = NULL, *name = NULL;
+        if (ibus_m17n_scan_class_name (G_OBJECT_CLASS_NAME (klass),
+                                       &lang,
+                                       &name) &&
+            g_str_has_prefix (name, "inscript"))
+            ibus_property_set_visible (m17n->virtkbd_prop, TRUE);
+        g_free (lang);
+        g_free (name);
+    }
 
     m17n->table = ibus_lookup_table_new (9, 0, TRUE, TRUE);
     g_object_ref_sink (m17n->table);
@@ -466,6 +686,11 @@ ibus_m17n_engine_destroy (IBusM17NEngine *m17n)
         m17n->setup_prop = NULL;
     }
 #endif  /* HAVE_SETUP */
+
+    if (m17n->virtkbd_prop) {
+        g_object_unref (m17n->virtkbd_prop);
+        m17n->virtkbd_prop = NULL;
+    }
 
     if (m17n->table) {
         g_object_unref (m17n->table);
@@ -708,6 +933,14 @@ ibus_m17n_engine_enable (IBusEngine *engine)
     /* Issue a dummy ibus_engine_get_surrounding_text() call to tell
        input context that we will use surrounding-text. */
     ibus_engine_get_surrounding_text (engine, NULL, NULL, NULL);
+
+#ifdef HAVE_EEKBOARD
+    if (eekboard) {
+        IBusM17NEngineClass *klass = (IBusM17NEngineClass *) G_OBJECT_GET_CLASS (m17n);
+        if (klass->econtext)
+            eekboard_client_push_context (eekboard, klass->econtext, NULL);
+    }
+#endif  /* HAVE_EEKBOARD */
 }
 
 static void
@@ -717,6 +950,14 @@ ibus_m17n_engine_disable (IBusEngine *engine)
 
     ibus_m17n_engine_focus_out (engine);
     parent_class->disable (engine);
+
+#ifdef HAVE_EEKBOARD
+    if (eekboard) {
+        IBusM17NEngineClass *klass = (IBusM17NEngineClass *) G_OBJECT_GET_CLASS (m17n);
+        if (klass->econtext)
+            eekboard_client_pop_context (eekboard, NULL);
+    }
+#endif  /* HAVE_EEKBOARD */
 }
 
 static void
@@ -764,6 +1005,7 @@ ibus_m17n_engine_property_activate (IBusEngine  *engine,
                                     guint        prop_state)
 {
     IBusM17NEngine *m17n = (IBusM17NEngine *) engine;
+    IBusM17NEngineClass *klass = (IBusM17NEngineClass *) G_OBJECT_GET_CLASS (m17n);
 
 #ifdef HAVE_SETUP
     if (g_strcmp0 (prop_name, "setup") == 0) {
@@ -778,6 +1020,53 @@ ibus_m17n_engine_property_activate (IBusEngine  *engine,
         g_free (setup);
     }
 #endif  /* HAVE_SETUP */
+
+    if (g_strcmp0 (prop_name, "virtual-keyboard") == 0) {
+#ifdef HAVE_EEKBOARD
+        if (eekboard) {
+            if (klass->econtext == NULL) {
+                klass->econtext = create_context (klass);
+                eekboard_client_push_context (eekboard, klass->econtext, NULL);
+            }
+            g_signal_handlers_disconnect_by_func (klass->econtext,
+                                                  G_CALLBACK (key_activated_cb),
+                                                  m17n);
+            g_signal_connect (klass->econtext, "key-activated",
+                              G_CALLBACK (key_activated_cb), m17n);
+            eekboard_context_show_keyboard (klass->econtext, NULL);
+        } else
+#endif  /* HAVE_EEKBOARD */
+        {
+            gchar *lang = NULL, *name = NULL;
+
+            if (ibus_m17n_scan_class_name (G_OBJECT_CLASS_NAME (klass),
+                                           &lang,
+                                           &name) &&
+                g_str_has_prefix (name, "inscript")) {
+                gchar *argv[4];
+                GError *error;
+
+                argv[0] = "iok";
+                argv[1] = "-n";
+                argv[2] = lang;
+                argv[3] = NULL;
+                error = NULL;
+                if (!g_spawn_async (NULL,
+                                    argv,
+                                    NULL,
+                                    G_SPAWN_SEARCH_PATH,
+                                    NULL,
+                                    NULL,
+                                    NULL,
+                                    &error)) {
+                    g_warning ("can't spawn iok: %s", error->message);
+                    g_error_free (error);
+                }
+            }
+            g_free (lang);
+            g_free (name);
+        }
+    }
 
     parent_class->property_activate (engine, prop_name, prop_state);
 }

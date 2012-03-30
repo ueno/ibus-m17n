@@ -88,6 +88,23 @@ fi
 
 AM_CONDITIONAL([HAVE_GTK],[test x$with_gtk != xno])
 
+dnl check eekboard for virtual keyboard
+AC_MSG_CHECKING([whether you enable eekboard])
+AC_ARG_ENABLE(eekboard,
+              AS_HELP_STRING([--enable-eekboard=no/yes],
+                             [Enable eekboard default=yes]),
+              enable_eekboard=$enableval,
+              enable_eekboard=yes)
+
+if test x$enable_eekboard = xyes; then
+  PKG_CHECK_MODULES([EEKBOARD], [eekboard-0.90], , enable_xtest=no)
+  if test x$enable_eekboard = xyes; then
+    AC_DEFINE([HAVE_EEKBOARD], [1], [Define if eekboard is found])
+  fi
+fi
+AM_CONDITIONAL(ENABLE_EEKBOARD, [test x$enable_eekboard = xyes])
+AC_MSG_RESULT($enable_eekboard)
+
 # check if minput_list, which is available in m17n-lib 1.6.2+ (CVS)
 save_CFLAGS="$CFLAGS"
 save_LIBS="$LIBS"
